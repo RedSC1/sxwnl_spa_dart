@@ -2,9 +2,11 @@
 
 > Chinese calendar & astronomical calculations library based on sxwnl + SPA. Provides lunar calendar, solar terms, gan-zhi and true solar time. Comparison scripts are included in the test directory.
 >
-> 免责声明：本库为 AI 移植版本，作者非天文历法专业，结果不保证完全准确，仅供学习与参考。项目包含一系列对比测试脚本，详见 test 目录。
+> 免责声明：本库为 AI 参考与实现版本，作者非天文历法专业，结果不保证完全准确，仅供学习与参考。项目包含一系列对比测试脚本，详见 test 目录。如使用本项目或本包，请标注算法原作者与来源（寿星天文历作者：许剑伟）。商用提醒：本项目代码采用 MIT 协议开源，但算法本身的商业使用授权需由使用者自行联系原作者取得。作者不承担因第三方商业行为引发的任何版权争议或法律责任。
+>
+> Disclaimer: This project is an AI-assisted implementation for learning/reference only. Accuracy is not guaranteed. Please credit the original algorithm author (SXWNL author: Xu Jianwei) when using this project/package. For commercial use, obtain authorization from the original algorithm author first. Commercial use of this project's code is under the MIT license, but commercial use of the underlying algorithms requires separate permission from the original author; the maintainer assumes no liability for any third-party commercial use.
 
-AI 移植的天文历法库：农历、节气等部分来自寿星天文历（万年历）[sxwnl](https://github.com/sxwnl/sxwnl)，太阳位置算法基于 [dart-spa](https://github.com/pingbird/dart-spa) 并做了魔改调整。
+天文历法计算参考寿星天文历（万年历）[sxwnl](https://github.com/sxwnl/sxwnl)，太阳位置算法参考 [dart-spa](https://github.com/pingbird/dart-spa) 并做了魔改调整。
 
 ## ✨ 特性
 
