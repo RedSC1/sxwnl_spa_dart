@@ -1,4 +1,4 @@
-import 'package:sxwnl_spa_dart/sxwnl_dart.dart';
+import 'package:sxwnl_spa_dart/sxwnl_spa_dart.dart';
 
 void main() {
   print('=== sxwnl_spa_dart 示例 ===\n');
