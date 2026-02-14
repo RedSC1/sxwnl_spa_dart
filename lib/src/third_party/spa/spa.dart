@@ -1220,7 +1220,10 @@ SPAOutput spaCalculate(
   final it = intermediate ??= SPAIntermediate();
 
   if (safe) {
-    assert(params.time.year >= -2000 && params.time.year <= 6000);
+    assert(
+      params.manualJD != null ||
+          (params.time.year >= -2000 && params.time.year <= 6000),
+    );
     assert(params.pressure >= 0 && params.pressure <= 5000);
     assert(params.temperature > -273 && params.temperature <= 6000);
     assert(params.deltaUtl > -1 && params.deltaUtl < 1);
