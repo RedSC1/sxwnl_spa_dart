@@ -25,7 +25,7 @@ dependencies:
 ### 1. 真太阳时
 
 ```dart
-import 'package:sxwnl_spa_dart/sxwnl_dart.dart';
+import 'package:sxwnl_spa_dart/sxwnl_spa_dart.dart';
 
 void main() {
   final time = AstroDateTime(2023, 1, 22, 12, 0, 0);
@@ -42,7 +42,7 @@ void main() {
 ### 2. 农历排盘
 
 ```dart
-import 'package:sxwnl_spa_dart/sxwnl_dart.dart';
+import 'package:sxwnl_spa_dart/sxwnl_spa_dart.dart';
 
 void main() {
   final ssq = SSQ();
@@ -62,7 +62,7 @@ void main() {
 干支计算需要 J2000 相对 JD，日柱与时柱建议使用真太阳时 JD。
 
 ```dart
-import 'package:sxwnl_spa_dart/sxwnl_dart.dart';
+import 'package:sxwnl_spa_dart/sxwnl_spa_dart.dart';
 
 void main() {
   final dt = AstroDateTime(2023, 2, 4, 12, 0, 0);

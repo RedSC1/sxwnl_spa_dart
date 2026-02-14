@@ -1,7 +1,7 @@
 name: sxwnl_spa_dart
 description: A starting point for Dart libraries or applications.
-version: 1.0.0
-# repository: https://github.com/my_org/my_repo
+version: 0.9.0
+repository: https://github.com/RedSC1/sxwnl_spa_dart
 
 environment:
   sdk: ^3.10.8

@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
-import 'package:sxwnl_spa_dart/sxwnl_dart.dart';
+import 'package:sxwnl_spa_dart/sxwnl_spa_dart.dart';
 
 int _secondsOfDay(AstroDateTime dt) {
   return dt.hour * 3600 + dt.minute * 60 + dt.second;
