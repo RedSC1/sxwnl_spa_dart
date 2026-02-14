@@ -208,9 +208,19 @@ class AstroDateTime implements Comparable<AstroDateTime> {
   ///
   /// 基于 Meeus 逆算法。
   static AstroDateTime _jdToGregorian(double jd) {
-    jd += 0.5;
-    final z = jd.floor();
-    final f = jd - z;
+    final jdRounded = (jd * 86400).round() / 86400.0;
+    var jdShifted = jdRounded + 0.5;
+    var z = jdShifted.floor();
+    var f = jdShifted - z;
+    var totalSeconds = (f * 86400).round();
+    if (totalSeconds >= 86400) {
+      totalSeconds -= 86400;
+      z += 1;
+    } else if (totalSeconds < 0) {
+      totalSeconds += 86400;
+      z -= 1;
+    }
+    f = totalSeconds / 86400.0;
 
     int a;
     if (z < 2299161) {
@@ -229,13 +239,10 @@ class AstroDateTime implements Comparable<AstroDateTime> {
 
     final dayFraction = b - d - (30.6001 * e).floor() + f;
     final day = dayFraction.floor();
-    final timeFraction = dayFraction - day;
 
     final month = e < 14 ? e - 1 : e - 13;
     final year = month > 2 ? c - 4716 : c - 4715;
 
-    // 从日的小数部分提取时分秒
-    final totalSeconds = (timeFraction * 86400).round();
     final hour = totalSeconds ~/ 3600;
     final minute = (totalSeconds % 3600) ~/ 60;
     final second = totalSeconds % 60;

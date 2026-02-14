@@ -20,7 +20,7 @@ class SPAParams {
     this.azmRotation = 0,
     this.atmosRefract = 0.5667,
     this.manualJD,
-  }) : timeZone = timeZone ?? time.timeZoneOffset.inHours.toDouble(),
+  }) : timeZone = timeZone ?? time.timeZoneOffset.inMinutes / 60.0,
        second =
            second ??
            time.second + time.millisecond / 1000 + time.microsecond / 1000000;
@@ -49,7 +49,7 @@ class SPAParams {
       temperature = list.length < 14 ? 0 : list[13].toDouble(),
       slope = list.length < 15 ? 0 : list[14].toDouble(),
       azmRotation = list.length < 16 ? 0 : list[15].toDouble(),
-      atmosRefract = list.length < 17 ? 0 : list[16].toDouble();
+      atmosRefract = list.length < 17 ? 0.5667 : list[16].toDouble();
 
   /// Observer time
   ///
@@ -1133,19 +1133,7 @@ void _calculateEotAndSunRiseTransitSet(
   );
   final h0Prime = -(_sunRadius + params.atmosRefract);
   final h0 = _sunHourAngleAtRiseSet(params.latitude, delta.item2, h0Prime);
-
-  if (h0 < 0) {
-    it.srha = it.ssha = it.sta = out.sunTransit = out.sunrise = out.sunset =
-        -99999;
-    return;
-  }
-
-  final h0Dfrac = h0 / 360;
-  final mRts = Tuple3(
-    _limitZero2One(mRtsTransit),
-    _limitZero2One(mRtsTransit - h0Dfrac),
-    _limitZero2One(mRtsTransit + h0Dfrac),
-  );
+  final timezone = params.timeZone;
 
   Tuple5<double, double, double, double, double> calcpr(double m) {
     final nuRts = nu + 360.985647 * m;
@@ -1157,17 +1145,29 @@ void _calculateEotAndSunRiseTransitSet(
     return Tuple5(nuRts, alphaPrime, deltaPrime, hPrime, hRts);
   }
 
-  final prTrans = calcpr(mRts.item1);
+  final mTransit = _limitZero2One(mRtsTransit);
+  final prTrans = calcpr(mTransit);
+  it.sta = prTrans.item5;
+  out.sunTransit = _dayFrac2LocalHr(mTransit - prTrans.item4 / 360, timezone);
+
+  if (h0 < 0) {
+    it.srha = it.ssha = -99999;
+    out.sunrise = out.sunset = -99999;
+    return;
+  }
+
+  final h0Dfrac = h0 / 360;
+  final mRts = Tuple3(
+    mTransit,
+    _limitZero2One(mTransit - h0Dfrac),
+    _limitZero2One(mTransit + h0Dfrac),
+  );
+
   final prRise = calcpr(mRts.item2);
   final prSet = calcpr(mRts.item3);
 
   it.srha = prRise.item4;
   it.ssha = prSet.item4;
-  it.sta = prTrans.item5;
-
-  final timezone = params.timeZone;
-
-  out.sunTransit = _dayFrac2LocalHr(mRts.item1 - prTrans.item4 / 360, timezone);
 
   out.sunrise = _dayFrac2LocalHr(
     _sunRiseAndSet(
