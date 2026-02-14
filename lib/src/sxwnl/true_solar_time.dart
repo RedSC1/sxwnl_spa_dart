@@ -51,7 +51,7 @@ SolarTimeResult calcTrueSolarTime(
   DateTime spaTime;
   double? manualJD;
 
-  if (dateTime.isBCE) {
+  if (dateTime.isBCE || dateTime.year > 6000) {
     // 公元前：伪造一个现代日期以通过 SPA 的 assert 检查
     spaTime = DateTime.utc(2000, 1, 1, 12, 0, 0);
     // 计算真实的 UT JD
