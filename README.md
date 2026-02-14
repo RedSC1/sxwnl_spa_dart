@@ -82,6 +82,7 @@ void main() {
 *   对比基准：sxwnl 寿星天文历(万年历) 5.10 原作者: 许剑伟（https://github.com/sxwnl/sxwnl）
 *   对比范围：节气/朔、日上中天、日出、日落（均与 sxwnl 对比，不与 spa 对比）
 *   对比脚本：test/compare_jq.dart、test/compare_solar_noon.dart、test/compare_sunrise.dart、test/compare_sunset.dart
+*   说明：未随包附带 sxwnl 原始源码，运行对比脚本需自行从 sxwnl 仓库下载后放入 test/sxwnl_js
 *   基准数据：test/compute_*_js.js 生成 js_*.json
 *   具体数值（由于太阳位置算法实现不同，日出/日上中天/日落存在秒级差异属于正常现象）：
 
@@ -123,6 +124,7 @@ See the Chinese examples above: 真太阳时 / 农历排盘 / 干支计算.
 *   Baseline: sxwnl 5.10 by Xu Jianwei (https://github.com/sxwnl/sxwnl)
 *   Scope: solar terms/new moons, solar noon, sunrise, sunset (all compared to sxwnl, not SPA)
 *   Scripts: test/compare_jq.dart, test/compare_solar_noon.dart, test/compare_sunrise.dart, test/compare_sunset.dart
+*   Note: the original sxwnl sources are not bundled; download from sxwnl repo and place under test/sxwnl_js to run scripts
 *   Data: test/compute_*_js.js generates js_*.json
 *   Numbers (second-level differences in solar position are expected due to algorithm differences):
 
