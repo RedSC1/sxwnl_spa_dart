@@ -78,7 +78,7 @@ void main() {
 
 *   静态分析：dart analyze 通过
 *   对比基准：sxwnl 寿星天文历(万年历) 5.10 原作者: 许剑伟（https://github.com/sxwnl/sxwnl）
-*   对比范围：节气/朔、日上中天、日出、日落
+*   对比范围：节气/朔、日上中天、日出、日落（均与 sxwnl 对比，不与 spa 对比）
 *   对比脚本：test/compare_jq.dart、test/compare_solar_noon.dart、test/compare_sunrise.dart、test/compare_sunset.dart
 *   基准数据：test/compute_*_js.js 生成 js_*.json
 *   具体数值（由于太阳位置算法实现不同，日出/日上中天/日落存在秒级差异属于正常现象）：
