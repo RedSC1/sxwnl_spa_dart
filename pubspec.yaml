@@ -1,5 +1,5 @@
 name: sxwnl_spa_dart
-description: A starting point for Dart libraries or applications.
+description: Astronomical calendar library with lunar, solar terms, gan-zhi and true solar time.
 version: 0.9.0
 repository: https://github.com/RedSC1/sxwnl_spa_dart
 
