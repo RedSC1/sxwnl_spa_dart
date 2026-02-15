@@ -377,9 +377,10 @@ class SSQ {
   ///
   /// 有效范围：两个冬至之间 (冬至一 <= d < 冬至二)。
   /// [jd] 为目标日期附近的 J2000 相对儒略日。
+  /// [enableHistoricalRules] 是否启用特殊历史历法规则（春秋/战国/秦汉月名与月建处理）。
   ///
   /// 返回该年的 SSQResult。
-  SSQResult calcY(double jd) {
+  SSQResult calcY(double jd, {bool enableHistoricalRules = true}) {
     final zq = List<double>.filled(25, 0);
     final hs = List<double>.filled(15, 0);
     final dx = List<int>.filled(14, 0);
@@ -417,7 +418,7 @@ class SSQ {
     // 6. 处理特殊历史历法 (春秋/战国/秦汉 -721 ~ -104)
     // 这部分逻辑比较复杂，先简化处理或完整移植
     final yy = int2((zq[0] + 10 + 180) / 365.2422) + 2000;
-    if (yy >= -721 && yy <= -104) {
+    if (enableHistoricalRules && yy >= -721 && yy <= -104) {
       // 历史特殊规则移植
       final ns = List<double>.filled(3, 0);
       final nsName = List<String>.filled(3, "");
@@ -488,28 +489,34 @@ class SSQ {
     }
 
     // 8. 月名转换与月建处理
-    for (var i = 0; i < 14; i++) {
-      final dm = hs[i] + j2000;
-      final v2 = ymInt[i];
-      var mc = monthNames[v2 % 12]; // 默认月建
+    if (enableHistoricalRules) {
+      for (var i = 0; i < 14; i++) {
+        final dm = hs[i] + j2000;
+        final v2 = ymInt[i];
+        var mc = monthNames[v2 % 12]; // 默认月建
 
-      // 特殊时期的月建调整
-      if (dm >= 1724360 && dm <= 1729794) {
-        mc = monthNames[(v2 + 1) % 12]; // 新莽
-      } else if (dm >= 1807724 && dm <= 1808699) {
-        mc = monthNames[(v2 + 1) % 12]; // 魏明帝
-      } else if (dm >= 1999349 && dm <= 1999467) {
-        mc = monthNames[(v2 + 2) % 12]; // 武则天
-      } else if (dm >= 1973067 && dm <= 1977052) {
-        // 武则天周历
-        if (v2 % 12 == 0) mc = "正";
-        if (v2 == 2) mc = '一';
+        // 特殊时期的月建调整
+        if (dm >= 1724360 && dm <= 1729794) {
+          mc = monthNames[(v2 + 1) % 12]; // 新莽
+        } else if (dm >= 1807724 && dm <= 1808699) {
+          mc = monthNames[(v2 + 1) % 12]; // 魏明帝
+        } else if (dm >= 1999349 && dm <= 1999467) {
+          mc = monthNames[(v2 + 2) % 12]; // 武则天
+        } else if (dm >= 1973067 && dm <= 1977052) {
+          // 武则天周历
+          if (v2 % 12 == 0) mc = "正";
+          if (v2 == 2) mc = '一';
+        }
+
+        // 改名避免重复
+        if (dm == 1729794 || dm == 1808699) mc = '拾贰';
+
+        ym[i] = mc;
       }
-
-      // 改名避免重复
-      if (dm == 1729794 || dm == 1808699) mc = '拾贰';
-
-      ym[i] = mc;
+    } else {
+      for (var i = 0; i < 14; i++) {
+        ym[i] = monthNames[ymInt[i] % 12];
+      }
     }
 
     return SSQResult(zq: zq, hs: hs, dx: dx, ym: ym, leap: leap);

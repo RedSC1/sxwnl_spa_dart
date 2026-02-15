@@ -36,7 +36,7 @@ void main() {
   // 3. 干支计算
   print('[干支计算]');
   // 2023-02-04 12:00 (立春后)
-  final dtBz = AstroDateTime(2023, 2, 4, 12, 0, 0);
+  final dtBz = AstroDateTime(1611, 2, 6, 12, 0, 0);
   final jdBz = dtBz.toJulianDay();
   final bazi = calcGanZhi(jdBz - 8 / 24 - 2451545, jdBz - 2451545);
   print('时间: $dtBz');
