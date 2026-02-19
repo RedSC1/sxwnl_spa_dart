@@ -222,7 +222,7 @@ class SSQ {
   }
 
   /// 较高精度气 (北京时间)。
-  double _qiHigh(double w) {
+  double qiHigh(double w) {
     var t = sALonT2(w) * 36525;
     t = t - dtT(t) + 8 / 24;
     var v = _jsMod(t + 0.5, 1) * 86400;
@@ -233,7 +233,7 @@ class SSQ {
   }
 
   /// 较高精度朔 (北京时间)。
-  double _soHigh(double w) {
+  double soHigh(double w) {
     var t = msALonT2(w) * 36525;
     t = t - dtT(t) + 8 / 24;
     var v = _jsMod(t + 0.5, 1) * 86400;
@@ -244,7 +244,7 @@ class SSQ {
   }
 
   /// 低精度定朔计算 (2000-600年误差<2小时)。
-  double _soLow(double w) {
+  double soLow(double w) {
     const v = 7771.37714500204;
     var t = (w + 1.08472) / v;
     t -=
@@ -258,7 +258,7 @@ class SSQ {
   }
 
   /// 低精度定气计算 (误差<30分)。
-  double _qiLow(double w) {
+  double qiLow(double w) {
     const v = 628.3319653318;
     var t = (w - 4.895062166) / v;
     t -=
@@ -312,14 +312,14 @@ class SSQ {
         // 定气
         // 2451259 = 1999.3.21 春分
         dRes = int2(
-          _qiHigh(int2((jd + pc - 2451259) / 365.2422 * 24) * math.pi / 12) +
+          qiHigh(int2((jd + pc - 2451259) / 365.2422 * 24) * math.pi / 12) +
               0.5,
         ).toDouble();
       } else {
         // 定朔
         // 2451551 = 2000.1.7 朔日
         dRes = int2(
-          _soHigh(int2((jd + pc - 2451551) / 29.5306) * math.pi * 2) + 0.5,
+          soHigh(int2((jd + pc - 2451551) / 29.5306) * math.pi * 2) + 0.5,
         ).toDouble();
       }
       return dRes; // 已经是 J2000 相对值
@@ -345,7 +345,7 @@ class SSQ {
       if (type == 1) {
         // 定气
         dRes = int2(
-          _qiLow(int2((jd + pc - 2451259) / 365.2422 * 24) * math.pi / 12) +
+          qiLow(int2((jd + pc - 2451259) / 365.2422 * 24) * math.pi / 12) +
               0.5,
         ).toDouble();
         // 查修正表
@@ -355,7 +355,7 @@ class SSQ {
       } else {
         // 定朔
         dRes = int2(
-          _soLow(int2((jd + pc - 2451551) / 29.5306) * math.pi * 2) + 0.5,
+          soLow(int2((jd + pc - 2451551) / 29.5306) * math.pi * 2) + 0.5,
         ).toDouble();
         final idx = int2((jd - f2) / 29.5306);
         if (idx >= 0 && idx < _sb.length) n = _sb[idx];

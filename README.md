@@ -20,7 +20,7 @@
 
 ```yaml
 dependencies:
-  sxwnl_spa_dart: ^0.9.5
+  sxwnl_spa_dart: ^0.9.6
 ```
 
 ## 🚀 快速上手
@@ -74,6 +74,44 @@ void main() {
   final jdUt = dt.toJ2000() - 8 / 24;
   final bazi = calcGanZhi(jdUt, trueSolar.trueSolarTime.toJ2000());
   print('八字 (Gan-zhi): $bazi');
+}
+```
+
+### 4. 节气查询 (Solar Terms)
+
+```dart
+import 'package:sxwnl_spa_dart/sxwnl_spa_dart.dart';
+
+void main() {
+  final now = AstroDateTime(2025, 2, 19, 12, 0, 0);
+
+  // 获取一年所有节气
+  final jq2025 = getYearJieQi(2025);
+  for (final jq in jq2025) {
+    print('${jq.name}: ${jq.dateTime}');
+  }
+
+  // 查询上一个/下一个节气
+  final prev = getPrevJieQi(now);
+  final next = getNextJieQi(now);
+
+  // 查询上一个/下一个节
+  final prevJie = getPrevJie(now);
+  final nextJie = getNextJie(now);
+
+  // 查询上一个/下一个气
+  final prevQi = getPrevQi(now);
+  final nextQi = getNextQi(now);
+
+  // 获取距离信息
+  final dist = getJieQiDistance(now);
+  final jieDist = getJieDistance(now);
+  final qiDist = getQiDistance(now);
+  final info = getJieQiInfo(now);
+
+  // 仅获取 Julian Day
+  final jdList = getYearJieQiJd(2025);
+  final prevJd = getPrevJieQiJd(now);
 }
 ```
 

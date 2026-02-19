@@ -1,3 +1,10 @@
+## 0.9.6
+
+- 新增 jie_qi.dart 模块，提供便捷的节气查询 API。
+- 公开底层定气/定朔计算接口：qiAccurate(), SSQ.qiHigh(), SSQ.soHigh(), SSQ.qiLow(), SSQ.soLow()。
+- 新增节/气查询与距离计算：getPrevJie(), getNextJie(), getPrevQi(), getNextQi(), getJieDistance(), getQiDistance(), getJieQiInfo()。
+- 新增 Julian Day 版本 API：getPrevJieQiJd(), getNextJieQiJd(), getPrevJieJd(), getNextJieJd(), getPrevQiJd(), getNextQiJd(), getYearJieQiJd()。
+
 ## 0.9.5
 
 - SSQ.calcY 增加 enableHistoricalRules 参数，控制是否启用特殊历史历法规则（春秋/战国/秦汉月名与月建处理）。
