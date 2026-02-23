@@ -62,47 +62,47 @@ double qiAccurate(double w) {
   return t - dtT(t) + 8 / 24;
 }
 
-List<double> _uniqueSorted(List<double> values) {
-  values.sort();
-  final out = <double>[];
-  for (final v in values) {
-    if (out.isEmpty || (v - out.last).abs() > 1e-9) {
-      out.add(v);
+/// 定义一个共用的辅助方法来获取覆盖 target 所在的节气列表
+List<JieQiResult> _getSurroundingJieQi(int year) {
+  final list1 = getYearJieQi(year - 1);
+  final list2 = getYearJieQi(year);
+  final list3 = getYearJieQi(year + 1);
+  final all = [...list1, ...list2, ...list3];
+  
+  // 去重
+  final uniqueAll = <JieQiResult>[];
+  for (final jq in all) {
+    if (uniqueAll.isEmpty || (jq.jd - uniqueAll.last.jd).abs() > 1e-9) {
+      uniqueAll.add(jq);
     }
   }
-  return out;
+  return uniqueAll;
 }
 
-/// 获取指定阳历年的所有 24 个节气。
+/// 获取指定阳历年的所有节气。
 ///
 /// [year] 阳历年（如 2025）。
-/// 返回从该年 1 月 1 日开始的 24 个节气列表，第一个是小寒。
+/// 返回从上一个冬至到当前冬至的节气列表（共25个节气，符合传统历法计算“岁”的范围）。
 List<JieQiResult> getYearJieQi(int year) {
-  final candidates = <double>[];
+  final results = <JieQiResult>[];
   final y = year - 2000;
 
-  for (var i = -30; i < 60; i++) {
+  // i = 0 是该年春分
+  // i = -6 是上一年的冬至
+  // i = 18 是当前年的冬至
+  for (var i = -6; i <= 18; i++) {
     final w = (y + i / 24 + 1) * 2 * pi;
     final jd = qiAccurate(w);
-    candidates.add(jd);
-  }
-
-  final sorted = _uniqueSorted(candidates);
-  final start = AstroDateTime(year, 1, 1).toJ2000();
-
-  var idx = 0;
-  for (; idx < sorted.length; idx++) {
-    if (sorted[idx] >= start - 1e-9) break;
-  }
-
-  final count = idx + 24 > sorted.length ? sorted.length - idx : 24;
-  final results = <JieQiResult>[];
-
-  for (var i = 0; i < count; i++) {
-    final jd = sorted[idx + i];
+    
+    // 春分(i=0)在 jieQiNames 中的索引是 5
+    int index = (i + 5) % 24;
+    if (index < 0) {
+      index += 24;
+    }
+    
     results.add(JieQiResult(
-      index: i,
-      name: jieQiNames[i],
+      index: index,
+      name: jieQiNames[index],
       jd: jd,
       dateTime: AstroDateTime.fromJ2000(jd),
     ));
@@ -116,11 +116,7 @@ List<JieQiResult> getYearJieQi(int year) {
 /// [target] 目标日期。
 /// 返回上一个节气，如未找到则返回 null。
 JieQiResult? getPrevJieQi(AstroDateTime target) {
-  final year = target.year;
-  final list1 = getYearJieQi(year);
-  final list2 = getYearJieQi(year - 1);
-  final all = [...list2, ...list1];
-
+  final all = _getSurroundingJieQi(target.year);
   final targetJD = target.toJ2000();
 
   for (var i = all.length - 1; i >= 0; i--) {
@@ -136,11 +132,7 @@ JieQiResult? getPrevJieQi(AstroDateTime target) {
 /// [target] 目标日期。
 /// 返回下一个节气，如未找到则返回 null。
 JieQiResult? getNextJieQi(AstroDateTime target) {
-  final year = target.year;
-  final list1 = getYearJieQi(year);
-  final list2 = getYearJieQi(year + 1);
-  final all = [...list1, ...list2];
-
+  final all = _getSurroundingJieQi(target.year);
   final targetJD = target.toJ2000();
 
   for (var i = 0; i < all.length; i++) {
@@ -213,11 +205,7 @@ JieQiDistance? getJieQiDistance(AstroDateTime target) {
 /// [target] 目标日期。
 /// 返回上一个节，如未找到则返回 null。
 JieQiResult? getPrevJie(AstroDateTime target) {
-  final year = target.year;
-  final list1 = getYearJieQi(year);
-  final list2 = getYearJieQi(year - 1);
-  final all = [...list2, ...list1];
-
+  final all = _getSurroundingJieQi(target.year);
   final targetJD = target.toJ2000();
 
   for (var i = all.length - 1; i >= 0; i--) {
@@ -233,11 +221,7 @@ JieQiResult? getPrevJie(AstroDateTime target) {
 /// [target] 目标日期。
 /// 返回上一个气，如未找到则返回 null。
 JieQiResult? getPrevQi(AstroDateTime target) {
-  final year = target.year;
-  final list1 = getYearJieQi(year);
-  final list2 = getYearJieQi(year - 1);
-  final all = [...list2, ...list1];
-
+  final all = _getSurroundingJieQi(target.year);
   final targetJD = target.toJ2000();
 
   for (var i = all.length - 1; i >= 0; i--) {
@@ -253,11 +237,7 @@ JieQiResult? getPrevQi(AstroDateTime target) {
 /// [target] 目标日期。
 /// 返回下一个节，如未找到则返回 null。
 JieQiResult? getNextJie(AstroDateTime target) {
-  final year = target.year;
-  final list1 = getYearJieQi(year);
-  final list2 = getYearJieQi(year + 1);
-  final all = [...list1, ...list2];
-
+  final all = _getSurroundingJieQi(target.year);
   final targetJD = target.toJ2000();
 
   for (var i = 0; i < all.length; i++) {
@@ -273,11 +253,7 @@ JieQiResult? getNextJie(AstroDateTime target) {
 /// [target] 目标日期。
 /// 返回下一个气，如未找到则返回 null。
 JieQiResult? getNextQi(AstroDateTime target) {
-  final year = target.year;
-  final list1 = getYearJieQi(year);
-  final list2 = getYearJieQi(year + 1);
-  final all = [...list1, ...list2];
-
+  final all = _getSurroundingJieQi(target.year);
   final targetJD = target.toJ2000();
 
   for (var i = 0; i < all.length; i++) {
