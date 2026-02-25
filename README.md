@@ -10,9 +10,12 @@
 
 ## ✨ 特性
 
+*   **农历转换**：`LunarDate` 支持阳历 ↔ 农历双向转换，兼容历史特殊月名
 *   **农历节气**：农历排盘与节气计算
 *   **太阳位置**：真太阳时、均时差、日出日落、日上中天
-*   **干支排盘**：四柱干支计算
+*   **干支排盘**：类型安全的 `TianGan`/`DiZhi`/`GanZhi`/`BaZi` 模型 + `calcBaZi()` API
+*   **时间封装**：`TimePack` 统一管理钟表时间、真太阳时、UTC 时间
+*   **日历工具**：`dayGanZhi()` 单日查询、公历/农历/节气三种月份边界的逐日干支表
 *   **历史历法**：春秋、战国、秦汉等时期的历法规则（已移植部分）
 *   **纯 Dart**：零 Native 依赖，全平台支持
 
@@ -20,7 +23,7 @@
 
 ```yaml
 dependencies:
-  sxwnl_spa_dart: ^0.9.7
+  sxwnl_spa_dart: ^0.10.0
 ```
 
 ## 🚀 快速上手
@@ -77,7 +80,65 @@ void main() {
 }
 ```
 
-### 4. 节气查询 (Solar Terms)
+### 4. 农历转换 (Lunar Calendar Conversion)
+
+```dart
+import 'package:sxwnl_spa_dart/sxwnl_spa_dart.dart';
+
+void main() {
+  // 阳历 → 农历
+  final solar = AstroDateTime(2025, 1, 29, 12, 0, 0);
+  final lunar = LunarDate.fromSolar(solar);
+  print('农历: $lunar'); // 2025年正月初一
+
+  // 农历 → 阳历
+  final lunar2 = LunarDate.fromString(2025, "正", 15);
+  print('阳历: ${lunar2.toSolar}');
+}
+```
+
+### 5. 类型安全的干支计算 (Typed Gan-zhi)
+
+```dart
+import 'package:sxwnl_spa_dart/sxwnl_spa_dart.dart';
+
+void main() {
+  final dt = AstroDateTime(2026, 2, 4, 12, 0, 0);
+  final loc = Location(116.4, 39.9);
+  final trueSolar = calcTrueSolarTime(dt, loc);
+  final jdUt = dt.toJ2000() - 8 / 24;
+
+  // 类型安全版本
+  final result = calcBaZi(jdUt, trueSolar.trueSolarTime.toJ2000());
+  print('年柱: ${result.bazi.year}'); // GanZhi 对象
+  print('年干: ${result.bazi.year.gan}'); // TianGan 枚举
+
+  // 原版字符串版本（保留兼容）
+  final strResult = calcGanZhi(jdUt, trueSolar.trueSolarTime.toJ2000());
+  print('八字: $strResult');
+}
+```
+
+### 6. 时间封装 (TimePack)
+
+```dart
+import 'package:sxwnl_spa_dart/sxwnl_spa_dart.dart';
+
+void main() {
+  final tp = TimePack.createBySolarTime(
+    clockTime: AstroDateTime(2026, 2, 18, 12, 0, 0),
+    location: Location(116.4, 39.9),
+    timezone: 8.0,
+    useTrueSolarTime: true,
+  );
+
+  print('钟表时间: ${tp.clockTime}');
+  print('真太阳时: ${tp.virtualTime}');
+  print('UTC时间: ${tp.utcTime}');
+}
+```
+
+### 7. 节气查询 (Solar Terms)
 
 ```dart
 import 'package:sxwnl_spa_dart/sxwnl_spa_dart.dart';
@@ -115,6 +176,32 @@ void main() {
 }
 ```
 
+### 8. 日历工具 (Calendar Utilities)
+
+```dart
+import 'package:sxwnl_spa_dart/sxwnl_spa_dart.dart';
+
+void main() {
+  // 查询某天的日干支
+  final gz = dayGanZhi(AstroDateTime(2026, 2, 17));
+  print('日干支: $gz'); // 壬戌
+
+  // 公历月份日历
+  final solarDays = getSolarMonthDays(2026, 3);
+  for (final d in solarDays) {
+    print('${d.solarDate.day}日: ${d.ganZhi}');
+  }
+
+  // 农历月份日历
+  final lunarDays = getLunarMonthDays(2025, "正");
+  print('正月有 ${lunarDays.length} 天');
+
+  // 节气月份日历（上一个节 ~ 下一个节）
+  final jqDays = getJieQiPeriodDays(AstroDateTime(2026, 3, 15));
+  print('节气月有 ${jqDays.length} 天');
+}
+```
+
 ## ✅ 测试结果
 
 *   静态分析：dart analyze 通过
@@ -139,9 +226,12 @@ Chinese calendar & astronomical calculations library based on sxwnl + SPA.
 
 ### Features
 
+*   **Lunar conversion**: `LunarDate` for solar ↔ lunar bidirectional conversion
 *   **Chinese lunar calendar**: lunar year structure and solar terms
 *   **Solar position**: true solar time, equation of time, sunrise, sunset, solar noon
-*   **Gan-zhi**: four pillars calculation
+*   **Gan-zhi**: type-safe `TianGan`/`DiZhi`/`GanZhi`/`BaZi` models + `calcBaZi()` API
+*   **Time packing**: `TimePack` for unified clock/solar/UTC time management
+*   **Calendar utilities**: `dayGanZhi()`, day range queries, solar/lunar/jieqi month calendars
 *   **Historical calendars**: partial rules for Spring/Autumn, Warring States, Qin/Han
 *   **Pure Dart**: no native dependencies
 

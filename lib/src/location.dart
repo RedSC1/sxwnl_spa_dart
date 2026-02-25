@@ -14,3 +14,6 @@ class Location {
   @override
   String toString() => 'Location($longitude, $latitude)';
 }
+
+/// 默认地理位置：东经120°，北纬30°（UTC+8 标准线）
+const Location defaultLoc = Location(120, 30);

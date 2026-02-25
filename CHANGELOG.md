@@ -1,3 +1,21 @@
+## 0.10.0
+
+- 新增类型安全的干支数据模型：`TianGan`、`DiZhi` 枚举，`GanZhi`、`BaZi` 类（从 bazi_core 下沉）。
+- 新增 `LunarDate` 农历日期类：支持阳历 ↔ 农历双向转换，兼容历史特殊月名（后九、拾贰、十三等）。
+- 新增 `TimePack` 时间封装包：统一管理钟表时间、真太阳时、UTC 时间和排盘基准时间。
+- 新增 `calcBaZi()` 方法：返回类型安全的 `BaZiCalcResult`（包含 `BaZi` 对象），原版 `calcGanZhi()` 字符串版本保留不变。
+- 新增 `defaultLoc` 常量（东经 120°，北纬 30°）。
+- 新增日历工具 API：
+  - `dayGanZhi()` — 查询某一天的日干支
+  - `dayGanZhiAt()` — 查询某一时刻的日干支，支持早晚子时 (`splitRatHour`) 配置
+  - `weekday()` — 查询某一天是星期几 (1=周一, 7=周日)
+  - `getDayRange()` — 获取日期范围内每一天的干支与星期
+  - `getSolarMonthDays()` — 公历月份逐日干支表
+  - `getLunarMonthDays()` — 农历月份逐日干支表
+  - `getJieQiPeriodDays()` — 节气月份逐日干支表
+  - `hourGanZhi()` — 五鼠遁：根据日干推算时辰干支
+  - `monthGanZhi()` — 五虎遁：根据年干推算月干支
+
 ## 0.9.7
 
 - 重大修复：修复 `getYearJieQi` 在历史远古年份（如公元前）因儒略历漂移导致的节气名称映射错误。

@@ -1,6 +1,10 @@
 export 'astro_date_time.dart';
 export 'jie_qi.dart';
 export 'location.dart';
+export 'models/gan_zhi.dart';
+export 'models/calendar.dart';
+export 'models/lunar_date.dart';
+export 'models/timepack.dart';
 export 'sxwnl/gan_zhi_calc.dart';
 export 'sxwnl/solar_lunar_pos.dart' show sALon, eLon, mLon;
 export 'sxwnl/ssq.dart';
