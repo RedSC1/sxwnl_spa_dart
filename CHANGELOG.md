@@ -1,6 +1,8 @@
-## 0.10.0
+## 0.10.1
 
-- 新增类型安全的干支数据模型：`TianGan`、`DiZhi` 枚举，`GanZhi`、`BaZi` 类（从 bazi_core 下沉）。
+- 新增 `GanZhi` 类的纳音五行属性：`naYin` (如'海中金') 和 `naYinWuXing` (如'金')。
+
+## 0.10.0
 - 新增 `LunarDate` 农历日期类：支持阳历 ↔ 农历双向转换，兼容历史特殊月名（后九、拾贰、十三等）。
 - 新增 `TimePack` 时间封装包：统一管理钟表时间、真太阳时、UTC 时间和排盘基准时间。
 - 新增 `calcBaZi()` 方法：返回类型安全的 `BaZiCalcResult`（包含 `BaZi` 对象），原版 `calcGanZhi()` 字符串版本保留不变。
