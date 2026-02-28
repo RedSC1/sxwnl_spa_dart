@@ -34,9 +34,103 @@ class DayInfo {
   static const _weekdayLabel = ['一', '二', '三', '四', '五', '六', '日'];
 }
 
+/// 年份信息
+class YearInfo {
+  /// 公历年份
+  final int year;
+
+  /// 年干支
+  final GanZhi ganZhi;
+
+  YearInfo({required this.year, required this.ganZhi});
+
+  @override
+  String toString() => '$year $ganZhi';
+}
+
 // ================================================================
 // 底层核心
 // ================================================================
+
+/// 计算某一年的年干支
+///
+/// 基于 1984年 = 甲子年 (1984 - 4) % 60 = 0
+///
+/// [year] 公历年份
+GanZhi yearGanZhi(int year) {
+  // 1984年是甲子年，对应的 index 为 0
+  // (year - 4) % 60
+  // 考虑到负数年份，使用 ((n % m) + m) % m
+  final offset = (year - 4) % 60;
+  final index = (offset + 60) % 60;
+
+  // 还原为 GanZhi
+  // GanZhi(gan, zhi) -> index = (6 * gan - 5 * zhi + 60) % 60
+  // 反向计算比较麻烦，不如直接构造
+  // index 对应 GanZhi 顺序：甲子(0), 乙丑(1), ...
+  // gan = index % 10 (甲=0, 乙=1...) - 实际上 index 0 是甲子，index 1 是乙丑
+  // zhi = index % 12 (子=0, 丑=1...)
+
+  final ganIdx = index % 10;
+  final zhiIdx = index % 12;
+
+  return GanZhi(TianGan.values[ganIdx], DiZhi.values[zhiIdx]);
+}
+
+/// 获取年份范围内的逐年干支
+///
+/// 返回从 [startYear] 到 [endYear]（**含首尾**）的逐年干支列表。
+///
+/// ```dart
+/// final years = getYearRange(1984, 2043);
+/// // 返回 1984年(甲子) ~ 2043年(癸亥) 的60年干支
+/// ```
+List<YearInfo> getYearRange(int startYear, int endYear) {
+  final count = endYear - startYear + 1;
+  if (count <= 0) return [];
+
+  final result = <YearInfo>[];
+  for (int i = 0; i < count; i++) {
+    final year = startYear + i;
+    result.add(YearInfo(year: year, ganZhi: yearGanZhi(year)));
+  }
+  return result;
+}
+
+/// 获取某一年的所有月份干支 (12个)
+///
+/// [yearGan] 当年的天干
+///
+/// 返回从寅月(正月)到丑月(腊月)的12个月份干支列表。
+///
+/// ```dart
+/// final yg = yearGanZhi(2025).gan; // 乙巳年 -> 乙
+/// final months = getYearMonthGanZhi(yg);
+/// // [戊寅, 己卯, ..., 丁丑]
+/// ```
+List<GanZhi> getYearMonthGanZhi(TianGan yearGan) {
+  return List.generate(12, (i) => monthGanZhi(yearGan, i));
+}
+
+/// 获取某日的所有时辰干支 (12个)
+///
+/// [dayGan] 当日的天干
+///
+/// 返回从子时(23:00-01:00)到亥时(21:00-23:00)的12个时辰干支列表。
+/// 列表顺序：子、丑、寅、卯、辰、巳、午、未、申、酉、戌、亥。
+///
+/// 注意：
+/// - 索引 0 (子时) 对应传统的 23:00-01:00。
+/// - 如果需要区分早子(00:00-01:00)和晚子(23:00-00:00)，它们在五鼠遁中通常共用同一个干支（即列表的第1项）。
+///
+/// ```dart
+/// final dg = dayGanZhi(date).gan; // 甲子日 -> 甲
+/// final hours = getDayHourGanZhi(dg);
+/// // [甲子, 乙丑, ..., 乙亥] (共12个)
+/// ```
+List<GanZhi> getDayHourGanZhi(TianGan dayGan) {
+  return List.generate(12, (i) => hourGanZhi(dayGan, i));
+}
 
 /// 计算某一天的日干支
 ///

@@ -23,7 +23,7 @@
 
 ```yaml
 dependencies:
-  sxwnl_spa_dart: ^0.10.1
+  sxwnl_spa_dart: ^0.10.2
 ```
 
 ## 🚀 快速上手

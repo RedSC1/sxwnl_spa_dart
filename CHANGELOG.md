@@ -1,3 +1,10 @@
+## 0.10.2
+
+- 新增 `yearGanZhi()` — 查询某一年的年干支 (1984=甲子)。
+- 新增 `getYearRange()` — 获取年份范围内逐年干支。
+- 新增 `getYearMonthGanZhi()` — 获取某一年的所有月份干支 (12个)。
+- 新增 `getDayHourGanZhi()` — 获取某日的所有时辰干支 (12个)。
+
 ## 0.10.1
 
 - 新增 `GanZhi` 类的纳音五行属性：`naYin` (如'海中金') 和 `naYinWuXing` (如'金')。

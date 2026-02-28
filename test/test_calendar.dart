@@ -252,4 +252,89 @@ void main() {
       }
     });
   });
+
+  group('yearGanZhi', () {
+    test('1984 is JiaZi', () {
+      final gz = yearGanZhi(1984);
+      expect(gz.toString(), '甲子');
+    });
+
+    test('2024 is JiaChen', () {
+      final gz = yearGanZhi(2024);
+      expect(gz.toString(), '甲辰');
+    });
+
+    test('2025 is YiSi', () {
+      final gz = yearGanZhi(2025);
+      expect(gz.toString(), '乙巳');
+    });
+
+    test('184 is JiaZi (1984 - 1800)', () {
+      expect(yearGanZhi(184).toString(), '甲子');
+    });
+
+    test('Negative year', () {
+      expect(yearGanZhi(-56).toString(), '甲子');
+    });
+  });
+
+  group('getYearMonthGanZhi', () {
+    test('1984(甲子) should return BingYin, DingMao... DingChou', () {
+      final yg = yearGanZhi(1984).gan; // 甲
+      final months = getYearMonthGanZhi(yg);
+      expect(months.length, 12);
+      expect(months[0].toString(), '丙寅');
+      expect(months[1].toString(), '丁卯');
+      expect(months[11].toString(), '丁丑');
+    });
+
+    test('2025(乙巳) should return WuYin, JiMao... DingChou', () {
+      final yg = yearGanZhi(2025).gan; // 乙
+      final months = getYearMonthGanZhi(yg);
+      expect(months.length, 12);
+      expect(months[0].toString(), '戊寅');
+      expect(months[1].toString(), '己卯');
+    });
+  });
+
+  group('getDayHourGanZhi', () {
+    test('JiaZi day should return JiaZi, YiChou... YiHai', () {
+      final dg = TianGan.jia;
+      final hours = getDayHourGanZhi(dg);
+      expect(hours.length, 12);
+      expect(hours[0].toString(), '甲子');
+      expect(hours[1].toString(), '乙丑');
+      expect(hours[11].toString(), '乙亥');
+    });
+
+    test('YiChou day should return BingZi, DingChou... DingHai', () {
+      final dg = TianGan.yi;
+      final hours = getDayHourGanZhi(dg);
+      expect(hours.length, 12);
+      expect(hours[0].toString(), '丙子');
+      expect(hours[1].toString(), '丁丑');
+    });
+  });
+
+  group('getYearRange', () {
+    test('1984-1985', () {
+      final years = getYearRange(1984, 1985);
+      expect(years.length, 2);
+      expect(years[0].year, 1984);
+      expect(years[0].ganZhi.toString(), '甲子');
+      expect(years[1].year, 1985);
+      expect(years[1].ganZhi.toString(), '乙丑');
+    });
+
+    test('Single year', () {
+      final years = getYearRange(2024, 2024);
+      expect(years.length, 1);
+      expect(years[0].ganZhi.toString(), '甲辰');
+    });
+
+    test('Invalid range', () {
+      final years = getYearRange(2025, 2024);
+      expect(years.isEmpty, true);
+    });
+  });
 }
