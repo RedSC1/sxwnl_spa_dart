@@ -12,6 +12,7 @@ import 'lunar_date.dart';
 import '../location.dart';
 import '../sxwnl/true_solar_time.dart';
 import '../sxwnl/astro_events.dart';
+import '../sxwnl/festivals.dart';
 
 /// 单日信息 (对标原版 sxwnl 的 ob 对象)
 class DayInfo {
@@ -29,6 +30,9 @@ class DayInfo {
   final PolarStatus polarStatus;
   final String constellation;
 
+  /// 所有的节日列表 (含大节和小节)
+  final List<Festival> festivals;
+
   DayInfo({
     required this.solarDate,
     required this.lunarDate,
@@ -37,6 +41,7 @@ class DayInfo {
     required this.weekday,
     required this.constellation,
     this.polarStatus = PolarStatus.none,
+    this.festivals = const [],
     this.solarTerm,
     this.solarTermTime,
     this.moonPhase,
@@ -54,6 +59,7 @@ class DayInfo {
     int? weekday,
     String? constellation,
     PolarStatus? polarStatus,
+    List<Festival>? festivals,
     String? solarTerm,
     AstroDateTime? solarTermTime,
     String? moonPhase,
@@ -69,6 +75,7 @@ class DayInfo {
       weekday: weekday ?? this.weekday,
       constellation: constellation ?? this.constellation,
       polarStatus: polarStatus ?? this.polarStatus,
+      festivals: festivals ?? this.festivals,
       solarTerm: solarTerm ?? this.solarTerm,
       solarTermTime: solarTermTime ?? this.solarTermTime,
       moonPhase: moonPhase ?? this.moonPhase,
@@ -81,12 +88,33 @@ class DayInfo {
   /// 星期几的中文名称 (一, 二, ..., 日)
   String get weekdayName => _weekdayLabel[weekday - 1];
 
+  /// 根据级别过滤节日
+  /// 
+  /// 默认保留 [statutory], [traditional], [popular] 级别的节日。
+  List<Festival> getFestivalsByLevel({Set<FestivalLevel>? levels}) {
+    final filter = levels ?? {
+      FestivalLevel.statutory,
+      FestivalLevel.traditional,
+      FestivalLevel.popular,
+    };
+    return festivals.where((f) => filter.contains(f.level)).toList();
+  }
+
+  /// 根据来源过滤节日
+  List<Festival> getFestivalsBySource(FestivalSource source) {
+    return festivals.where((f) => f.source == source).toList();
+  }
+
   @override
   String toString() {
     String s =
         '${solarDate.year}-${_pad(solarDate.month)}-${_pad(solarDate.day)} ';
     s += '$ganZhi 周$weekdayName $constellation ';
     s += '农历$lunarDate(${lunarMonthSize == 30 ? "大" : "小"})';
+
+    // toString 默认显示主要级别节日
+    final displayFtv = getFestivalsByLevel();
+    if (displayFtv.isNotEmpty) s += ' 【${displayFtv.join(', ')}】';
 
     if (solarTerm != null) s += ' [$solarTerm ${_timeStr(solarTermTime!)}]';
     if (moonPhase != null) s += ' ($moonPhase ${_timeStr(moonPhaseTime!)})';
@@ -190,7 +218,6 @@ List<DayInfo> getDayRange(AstroDateTime start, AstroDateTime end, {Location? loc
     }
   }
 
-  final firstGanZhi = dayGanZhi(startDate);
   final result = <DayInfo>[];
   
   for (int i = 0; i < totalDays; i++) {
@@ -198,11 +225,15 @@ List<DayInfo> getDayRange(AstroDateTime start, AstroDateTime end, {Location? loc
     final currentJD = date.toJ2000();
     
     final lunar = LunarDate.fromSolar(date);
+    final gz = dayGanZhi(date);
     final dateKey = "${date.year}-${_pad(date.month)}-${_pad(date.day)}";
     final jq = jqMap[dateKey];
     
     final mp = AstroEvents.getMoonPhase(date);
     final constellation = AstroEvents.getConstellation(currentJD);
+    
+    // 调用全新的 5 级节日系统 (包含三伏、数九)
+    final ftvs = FestivalEngine.getFestivals(date, lunar, gz);
 
     AstroDateTime? sunrise, sunset;
     PolarStatus polarStatus = PolarStatus.none;
@@ -217,9 +248,10 @@ List<DayInfo> getDayRange(AstroDateTime start, AstroDateTime end, {Location? loc
       solarDate: AstroDateTime(date.year, date.month, date.day),
       lunarDate: lunar,
       lunarMonthSize: lunar.monthSize,
-      ganZhi: firstGanZhi + i,
+      ganZhi: gz,
       weekday: weekday(date),
       constellation: constellation,
+      festivals: ftvs,
       polarStatus: polarStatus,
       solarTerm: jq?.name,
       solarTermTime: jq?.dateTime,

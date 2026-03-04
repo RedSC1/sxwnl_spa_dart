@@ -264,6 +264,9 @@ class LunarDate {
   /// 获取农历日名称 (如 "初一", "廿一")
   String get dayName => _dayToCn(day);
 
+  /// 是否是本月最后一天 (除夕判断用)
+  bool get isLastDay => day == monthSize;
+
   @override
   String toString() => "$lunarYear年$monthNameStr月$dayName";
 

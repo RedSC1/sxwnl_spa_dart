@@ -15,7 +15,8 @@
 *   **太阳位置**：真太阳时、均时差、日出日落、日上中天
 *   **干支排盘**：类型安全的 `TianGan`/`DiZhi`/`GanZhi`/`BaZi` 模型 + `calcBaZi()` API
 *   **时间封装**：`TimePack` 统一管理钟表时间、真太阳时、UTC 时间
-*   **日历工具**：`dayGanZhi()` 单日查询、公历/农历/节气三种月份边界的逐日干支表
+*   **一站式模型**：`DayInfo` 对象集成干支、农历、节日、节气、月相、日出日落、星座等全量单日信息
+*   **节日民俗**：对标原版 sxwnl (lunar.js) 补全节日库，支持分类过滤与民俗进度显示（如“初伏第3天”）
 *   **历史历法**：春秋、战国、秦汉等时期的历法规则（已移植部分）
 *   **纯 Dart**：零 Native 依赖，全平台支持
 
@@ -23,7 +24,7 @@
 
 ```yaml
 dependencies:
-  sxwnl_spa_dart: ^0.10.3
+  sxwnl_spa_dart: ^0.11.0
 ```
 
 ## 🚀 快速上手
@@ -176,29 +177,68 @@ void main() {
 }
 ```
 
-### 8. 日历工具 (Calendar Utilities)
+### 8. 一站式日历信息 (DayInfo)
+
+`DayInfo` 是本库最核心的数据模型，通过 `getDayRange` 或 `getSolarMonthDays` 等接口返回。它集合了几乎所有常用的单日历法与天文数据。
 
 ```dart
 import 'package:sxwnl_spa_dart/sxwnl_spa_dart.dart';
 
 void main() {
-  // 查询某天的日干支
-  final gz = dayGanZhi(AstroDateTime(2026, 2, 17));
-  print('日干支: $gz'); // 壬戌
-
-  // 公历月份日历
-  final solarDays = getSolarMonthDays(2026, 3);
-  for (final d in solarDays) {
-    print('${d.solarDate.day}日: ${d.ganZhi}');
+  // 获取 2026 年 3 月的单日信息列表 (包含地理位置以计算日出日落)
+  final days = getSolarMonthDays(2026, 3, location: Location(116.4, 39.9));
+  
+  for (final d in days) {
+    print('--- ${d.solarDate.toDateString()} ---');
+    print('农历: ${d.lunarDate} (月大小: ${d.lunarMonthSize})');
+    print('干支: ${d.ganZhi} (周${d.weekdayName})');
+    print('星座: ${d.constellation}');
+    print('节日: ${d.festivals}');
+    if (d.solarTerm != null) print('节气: ${d.solarTerm} @ ${d.solarTermTime}');
+    if (d.moonPhase != null) print('月相: ${d.moonPhase} @ ${d.moonPhaseTime}');
+    if (d.sunrise != null) print('日出: ${d.sunrise} / 日落: ${d.sunset}');
   }
+}
+```
 
-  // 农历月份日历
-  final lunarDays = getLunarMonthDays(2025, "正");
-  print('正月有 ${lunarDays.length} 天');
+### 9. 节日民俗过滤与进度 (Festivals)
 
-  // 节气月份日历（上一个节 ~ 下一个节）
-  final jqDays = getJieQiPeriodDays(AstroDateTime(2026, 3, 15));
-  print('节气月有 ${jqDays.length} 天');
+`DayInfo.festivals` 返回全量节日列表。可以使用 `getFestivalsByLevel()` 方法进行 UI 降噪。
+
+```dart
+import 'package:sxwnl_spa_dart/sxwnl_spa_dart.dart';
+
+void main() {
+  final day = getSolarMonthDays(2026, 7).firstWhere((d) => d.solarDate.day == 16);
+  
+  // 1. 获取全量列表
+  print('全量: ${day.festivals}'); // [中伏, 国际臭氧层保护日...]
+  
+  // 2. 简易显示 (仅法定、传统、流行级别)
+  print('主要节日: ${day.getFestivalsByLevel()}'); 
+
+  // 3. 进度追踪 (三伏、数九)
+  print('当前进度: ${day.festivals.firstWhere((f) => f.name.contains("伏"))}'); // 中伏第1天
+}
+```
+
+### 10. UI 增强：细分月相扩展 (8 Moon Phases)
+
+如果你的 UI 需要更细致的月相描述（如峨眉月、凸月等），可以使用扩展方法进行升级。
+
+```dart
+import 'package:sxwnl_spa_dart/sxwnl_spa_dart.dart';
+import 'package:sxwnl_spa_dart/src/extensions/sxwnl_ext.dart';
+
+void main() {
+  List<DayInfo> days = getSolarMonthDays(2026, 2);
+  
+  // 一键升级月相显示 (将 moonPhase 字段补全为 8 种形态)
+  final enhancedDays = days.withMoonPhase8();
+  
+  for (final d in enhancedDays) {
+    if (d.moonPhase != null) print('${d.solarDate.day}日: ${d.moonPhase}');
+  }
 }
 ```
 
@@ -231,7 +271,8 @@ Chinese calendar & astronomical calculations library based on sxwnl + SPA.
 *   **Solar position**: true solar time, equation of time, sunrise, sunset, solar noon
 *   **Gan-zhi**: type-safe `TianGan`/`DiZhi`/`GanZhi`/`BaZi` models + `calcBaZi()` API
 *   **Time packing**: `TimePack` for unified clock/solar/UTC time management
-*   **Calendar utilities**: `dayGanZhi()`, day range queries, solar/lunar/jieqi month calendars
+*   **Unified Model**: `DayInfo` object integrating Gan-zhi, Lunar, Festivals, Solar Terms, Moon Phases, Sunrise/Sunset, etc.
+*   **Festivals & Customs**: Comprehensive festival database aligned with sxwnl (lunar.js) with classification and progress tracking (e.g., "3rd day of Sanfu")
 *   **Historical calendars**: partial rules for Spring/Autumn, Warring States, Qin/Han
 *   **Pure Dart**: no native dependencies
 
@@ -239,8 +280,7 @@ Chinese calendar & astronomical calculations library based on sxwnl + SPA.
 
 ```yaml
 dependencies:
-  sxwnl_spa_dart:
-    path: ../sxwnl_dart
+  sxwnl_spa_dart: ^0.11.0
 ```
 
 ### Quick Start
