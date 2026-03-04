@@ -261,8 +261,11 @@ class LunarDate {
     throw StateError("数据异常");
   }
 
+  /// 获取农历日名称 (如 "初一", "廿一")
+  String get dayName => _dayToCn(day);
+
   @override
-  String toString() => "$lunarYear年$monthNameStr月${_dayToCn(day)}";
+  String toString() => "$lunarYear年$monthNameStr月$dayName";
 
   static int _cnToInt(String cn) {
     const map = {

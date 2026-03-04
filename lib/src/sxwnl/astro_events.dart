@@ -38,31 +38,38 @@ const List<String> moonPhaseNames8 = [
 ];
 
 class AstroEvents {
-  /// 获取指定儒略日 [jd] 所在的月相。
+  /// 获取指定公历日期 [targetDate] 发生的月相。
   /// 
-  /// [use8Phases] 是否使用 8 相位模式（包含峨眉月、凸月等）。
-  static MoonPhaseResult? getMoonPhase(double jd, {bool use8Phases = false}) {
+  /// [use8Phases] 是否使用 8 相位模式。
+  static MoonPhaseResult? getMoonPhase(AstroDateTime targetDate, {bool use8Phases = false}) {
     final ssq = SSQ();
     final names = use8Phases ? moonPhaseNames8 : moonPhaseNames4;
     final count = names.length;
     final step = 1.0 / count;
 
-    // 估算 n
+    final jd = targetDate.toJ2000();
+    
+    // 估算 n (总月数偏移)
     double n_float = (jd - 6) / 29.5306;
     int n = n_float.floor();
 
+    // 检查范围：前后各一个月，确保覆盖所有可能的相位时刻
     for (int monthOffset = -1; monthOffset <= 1; monthOffset++) {
       int currentN = n + monthOffset;
       for (int i = 0; i < count; i++) {
-        // 计算目标黄经差 W
         double W = (currentN + i * step) * 2 * math.pi;
         double phaseJD = ssq.soHigh(W);
         
-        if ((phaseJD + 0.5).floor() == jd.floor()) {
+        // 关键修正：将时刻转换为日期对象，进行精确的年月日对比
+        // 这能彻底解决由于儒略日舍入导致的“一天双相”或“一相双占”问题
+        final phaseDate = AstroDateTime.fromJ2000(phaseJD);
+        if (phaseDate.year == targetDate.year &&
+            phaseDate.month == targetDate.month &&
+            phaseDate.day == targetDate.day) {
           return MoonPhaseResult(
             name: names[i],
             jd: phaseJD,
-            dateTime: AstroDateTime.fromJ2000(phaseJD),
+            dateTime: phaseDate,
           );
         }
       }
@@ -81,6 +88,7 @@ class AstroEvents {
     final ssq = SSQ();
     final res = ssq.calcY(jd);
     int mk = 0;
+    // 星座切换点在“中气”上
     for (int i = 0; i <= 22; i += 2) {
       if (jd >= res.zq[i]) {
         mk = i ~/ 2;

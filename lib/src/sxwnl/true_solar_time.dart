@@ -9,6 +9,18 @@ import '../astro_date_time.dart';
 import '../location.dart';
 import 'delta_t.dart';
 
+/// 极区特殊天象状态
+enum PolarStatus {
+  /// 正常昼夜交替
+  none,
+
+  /// 极昼 (太阳永不落)
+  polarDay,
+
+  /// 极夜 (太阳永不升)
+  polarNight,
+}
+
 /// 真太阳时计算结果。
 class SolarTimeResult {
   /// 真太阳时。
@@ -28,10 +40,14 @@ class SolarTimeResult {
   /// 当日的日落时刻 (标准时区时间)。
   final AstroDateTime? sunset;
 
+  /// 极地状态。
+  final PolarStatus polarStatus;
+
   SolarTimeResult({
     required this.trueSolarTime,
     required this.equationOfTime,
     required this.solarNoon,
+    required this.polarStatus,
     this.sunrise,
     this.sunset,
   });
@@ -76,6 +92,7 @@ SolarTimeResult calcTrueSolarTime(
   final deltaTSeconds = dtT(dateTime.toJ2000()) * 86400.0;
 
   // 2. 调用 SPA
+  final it = SPAIntermediate(); // 用于获取赤纬数据以判断极昼极夜
   final params = SPAParams(
     time: spaTime,
     timeZone: timezone,
@@ -87,7 +104,7 @@ SolarTimeResult calcTrueSolarTime(
   );
 
   // 3. 获取结果
-  final out = spaCalculate(params);
+  final out = spaCalculate(params, intermediate: it);
 
   // 4. 解析结果
   // sunTransit 是基于输入时区(timezone)的标准时间
@@ -123,9 +140,11 @@ SolarTimeResult calcTrueSolarTime(
     0,
   ).add(Duration(microseconds: (transitStandard * 3600 * 1000000).round()));
 
+  // 5. 处理日出日落及极地判定
   // 日出日落 (标准时)
   AstroDateTime? sunrise;
   AstroDateTime? sunset;
+  PolarStatus polarStatus = PolarStatus.none;
 
   if (out.sunrise != null && out.sunrise != -99999) {
     sunrise = AstroDateTime(
@@ -149,10 +168,22 @@ SolarTimeResult calcTrueSolarTime(
     ).add(Duration(microseconds: (out.sunset! * 3600 * 1000000).round()));
   }
 
+  // 极地判定逻辑
+  if (sunrise == null || sunset == null) {
+    // 使用 SPA 计算出的正午高度角 (it.sta) 进行判定。
+    // 这是最准确的，因为它与 SPA 内部的“升落”定义（约 -0.833度）完全同步。
+    if ((it.sta ?? -999) > -0.833) {
+      polarStatus = PolarStatus.polarDay;
+    } else {
+      polarStatus = PolarStatus.polarNight;
+    }
+  }
+
   return SolarTimeResult(
     trueSolarTime: trueSolarTime,
     equationOfTime: Duration(microseconds: (eotHours * 3600 * 1000000).round()),
     solarNoon: solarNoon,
+    polarStatus: polarStatus,
     sunrise: sunrise,
     sunset: sunset,
   );

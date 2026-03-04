@@ -1,7 +1,7 @@
 import 'package:sxwnl_spa_dart/sxwnl_spa_dart.dart';
 
 void main() {
-  print('=== ⚖️ 冤案重审：2033年置闰逻辑复盘 ===');
+  print('=== ⚖️2033年置闰===');
 
   final ssq = SSQ();
 

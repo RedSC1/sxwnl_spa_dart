@@ -165,10 +165,15 @@ class AstroDateTime implements Comparable<AstroDateTime> {
     final y = isBCE ? '公元前${1 - year}' : '$year';
     final m = month.toString().padLeft(2, '0');
     final d = day.toString().padLeft(2, '0');
+    return '$y-$m-$d ${toTimeString()}';
+  }
+
+  /// 获取时间部分的字符串 (HH:mm:ss)
+  String toTimeString() {
     final h = hour.toString().padLeft(2, '0');
     final mi = minute.toString().padLeft(2, '0');
     final s = second.toString().padLeft(2, '0');
-    return '$y-$m-$d $h:$mi:$s';
+    return '$h:$mi:$s';
   }
 
   // --------------- 内部：JD 转换算法 (Meeus) ---------------

@@ -26,6 +26,7 @@ class DayInfo {
   final AstroDateTime? moonPhaseTime;
   final AstroDateTime? sunrise;
   final AstroDateTime? sunset;
+  final PolarStatus polarStatus;
   final String constellation;
 
   DayInfo({
@@ -35,6 +36,7 @@ class DayInfo {
     required this.ganZhi,
     required this.weekday,
     required this.constellation,
+    this.polarStatus = PolarStatus.none,
     this.solarTerm,
     this.solarTermTime,
     this.moonPhase,
@@ -51,6 +53,7 @@ class DayInfo {
     GanZhi? ganZhi,
     int? weekday,
     String? constellation,
+    PolarStatus? polarStatus,
     String? solarTerm,
     AstroDateTime? solarTermTime,
     String? moonPhase,
@@ -65,6 +68,7 @@ class DayInfo {
       ganZhi: ganZhi ?? this.ganZhi,
       weekday: weekday ?? this.weekday,
       constellation: constellation ?? this.constellation,
+      polarStatus: polarStatus ?? this.polarStatus,
       solarTerm: solarTerm ?? this.solarTerm,
       solarTermTime: solarTermTime ?? this.solarTermTime,
       moonPhase: moonPhase ?? this.moonPhase,
@@ -74,14 +78,24 @@ class DayInfo {
     );
   }
 
+  /// 星期几的中文名称 (一, 二, ..., 日)
+  String get weekdayName => _weekdayLabel[weekday - 1];
+
   @override
   String toString() {
-    String s = '${solarDate.year}-${_pad(solarDate.month)}-${_pad(solarDate.day)} ';
-    s += '$ganZhi 周${_weekdayLabel[weekday - 1]} $constellation ';
+    String s =
+        '${solarDate.year}-${_pad(solarDate.month)}-${_pad(solarDate.day)} ';
+    s += '$ganZhi 周$weekdayName $constellation ';
     s += '农历$lunarDate(${lunarMonthSize == 30 ? "大" : "小"})';
+
     if (solarTerm != null) s += ' [$solarTerm ${_timeStr(solarTermTime!)}]';
     if (moonPhase != null) s += ' ($moonPhase ${_timeStr(moonPhaseTime!)})';
-    if (sunrise != null && sunset != null) {
+    
+    if (polarStatus == PolarStatus.polarDay) {
+      s += ' {全天极昼}';
+    } else if (polarStatus == PolarStatus.polarNight) {
+      s += ' {全天极夜}';
+    } else if (sunrise != null && sunset != null) {
       s += ' {日出 ${_timeStr(sunrise!)} / 日落 ${_timeStr(sunset!)}}';
     }
     return s;
@@ -187,15 +201,16 @@ List<DayInfo> getDayRange(AstroDateTime start, AstroDateTime end, {Location? loc
     final dateKey = "${date.year}-${_pad(date.month)}-${_pad(date.day)}";
     final jq = jqMap[dateKey];
     
-    // 基础天象 (原版模式)
-    final mp = AstroEvents.getMoonPhase(currentJD);
+    final mp = AstroEvents.getMoonPhase(date);
     final constellation = AstroEvents.getConstellation(currentJD);
 
     AstroDateTime? sunrise, sunset;
+    PolarStatus polarStatus = PolarStatus.none;
     if (location != null) {
       final solarRes = calcTrueSolarTime(date, location);
       sunrise = solarRes.sunrise;
       sunset = solarRes.sunset;
+      polarStatus = solarRes.polarStatus;
     }
 
     result.add(DayInfo(
@@ -205,6 +220,7 @@ List<DayInfo> getDayRange(AstroDateTime start, AstroDateTime end, {Location? loc
       ganZhi: firstGanZhi + i,
       weekday: weekday(date),
       constellation: constellation,
+      polarStatus: polarStatus,
       solarTerm: jq?.name,
       solarTermTime: jq?.dateTime,
       moonPhase: mp?.name,
@@ -217,7 +233,7 @@ List<DayInfo> getDayRange(AstroDateTime start, AstroDateTime end, {Location? loc
 }
 
 String _pad(int n) => n.toString().padLeft(2, '0');
-String _timeStr(AstroDateTime dt) => "${_pad(dt.hour)}:${_pad(dt.minute)}:${_pad(dt.second)}";
+String _timeStr(AstroDateTime dt) => dt.toTimeString();
 
 // ================================================================
 // 快捷接口

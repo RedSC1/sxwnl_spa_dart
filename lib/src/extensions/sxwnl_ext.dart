@@ -12,9 +12,8 @@ extension DayInfoListMoonExt on List<DayInfo> {
   /// 采用 copyWith 模式进行增量更新，不破坏原始数据。
   List<DayInfo> withMoonPhase8() {
     return map((day) {
-      final jd = day.solarDate.toJ2000();
-      // 调用核心层提供的 use8Phases 算法
-      final mp8 = AstroEvents.getMoonPhase(jd, use8Phases: true);
+      // 调用核心层提供的 use8Phases 算法，传递完整日期对象
+      final mp8 = AstroEvents.getMoonPhase(day.solarDate, use8Phases: true);
       
       if (mp8 != null) {
         return day.copyWith(
