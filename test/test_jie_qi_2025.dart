@@ -1,6 +1,3 @@
-import 'dart:io';
-import 'package:path/path.dart' as p;
-
 // 为了解决 package 引用问题，我们不使用 package:sxwnl_dart
 // 而是通过相对路径直接引用文件，或者设置 package config
 // 在这个测试脚本中，我将直接读取 E:\ziwei_core_v2\sxwnl_dart\lib\src 下的文件

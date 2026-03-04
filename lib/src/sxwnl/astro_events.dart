@@ -6,7 +6,6 @@ library;
 import 'dart:math' as math;
 import '../astro_date_time.dart';
 import 'ssq.dart';
-import 'solar_lunar_pos.dart';
 
 /// 月相计算结果。
 class MoonPhaseResult {
@@ -50,8 +49,8 @@ class AstroEvents {
     final jd = targetDate.toJ2000();
     
     // 估算 n (总月数偏移)
-    double n_float = (jd - 6) / 29.5306;
-    int n = n_float.floor();
+    double nFloat = (jd - 6) / 29.5306;
+    int n = nFloat.floor();
 
     // 检查范围：前后各一个月，确保覆盖所有可能的相位时刻
     for (int monthOffset = -1; monthOffset <= 1; monthOffset++) {

@@ -443,7 +443,7 @@ class FestivalEngine {
       final index = (diff ~/ 9) + 1;
       final day = (diff % 9) + 1;
       final name = _numToJiu(index);
-      return day == 1 ? "『$name』" : "$name第${day}天";
+      return day == 1 ? "『$name』" : "$name第$day天";
     }
     return null;
   }
@@ -463,15 +463,15 @@ class FestivalEngine {
 
     if (currentJD >= g3 && currentJD < g4) {
       int d = currentJD - g3 + 1;
-      return d == 1 ? "初伏" : "初伏第${d}天";
+      return d == 1 ? "初伏" : "初伏第$d天";
     }
     if (currentJD >= g4 && currentJD < moStart) {
       int d = currentJD - g4 + 1;
-      return d == 1 ? "中伏" : "中伏第${d}天";
+      return d == 1 ? "中伏" : "中伏第$d天";
     }
     if (currentJD >= moStart && currentJD < moStart + 10) {
       int d = currentJD - moStart + 1;
-      return d == 1 ? "末伏" : "末伏第${d}天";
+      return d == 1 ? "末伏" : "末伏第$d天";
     }
     return null;
   }

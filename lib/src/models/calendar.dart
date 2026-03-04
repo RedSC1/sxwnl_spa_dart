@@ -3,7 +3,6 @@
 /// 提供基于日期范围的逐日干支查询，以及按公历、农历、节气三种月份边界的便捷接口。
 library;
 
-import 'dart:math' as math;
 import '../astro_date_time.dart';
 import '../jie_qi.dart';
 import '../sxwnl/ssq.dart';

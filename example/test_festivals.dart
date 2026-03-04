@@ -35,8 +35,6 @@ void main() {
   for (var day in jan) {
     final jiu = FestivalEngine.getShujiu(day.solarDate);
     if (jiu != null) {
-      // 仅打印进九的那一天
-      final currentJD = day.solarDate.toJ2000().floor();
       // 简单判断是否是九的第一天
       if (day.festivals.any((f) => f.name.contains('九'))) {
         print('${day.solarDate.toString().split(' ')[0]} | 今日进: $jiu');
