@@ -15,6 +15,7 @@ import 'dart:math' as math;
 import 'delta_t.dart';
 import 'math_utils.dart';
 import 'solar_lunar_pos.dart';
+import 'xl_data.dart';
 
 /// 朔直线拟合参数表。
 ///

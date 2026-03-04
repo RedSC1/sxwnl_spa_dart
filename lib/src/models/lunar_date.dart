@@ -7,12 +7,16 @@ class LunarDate {
   final bool isLeap;
   final String monthNameStr;
 
+  /// 该月总天数 (29 或 30)
+  final int monthSize;
+
   const LunarDate._({
     required this.lunarYear,
     required this.month,
     required this.day,
     required this.isLeap,
     required this.monthNameStr,
+    required this.monthSize,
   });
 
   factory LunarDate.fromString(
@@ -55,6 +59,7 @@ class LunarDate {
     final ssq = SSQ();
     final result = ssq.calcY(AstroDateTime(year, 6, 1).toJ2000());
     bool found = false;
+    int monthSize = 30;
     for (int i = 0; i < result.ym.length; i++) {
       final rawName = result.ym[i];
       int currentMonth;
@@ -76,8 +81,9 @@ class LunarDate {
 
       if (currentMonth == logicalMonth && currentIsLeap == isLeapMonth) {
         found = true;
-        if (day < 1 || day > result.dx[i]) {
-          throw RangeError("农历 $year 年 $finalShowName 只有 ${result.dx[i]} 天");
+        monthSize = result.dx[i];
+        if (day < 1 || day > monthSize) {
+          throw RangeError("农历 $year 年 $finalShowName 只有 $monthSize 天");
         }
         break;
       }
@@ -93,6 +99,7 @@ class LunarDate {
       day: day,
       isLeap: isLeapMonth,
       monthNameStr: finalShowName,
+      monthSize: monthSize,
     );
   }
 
@@ -194,6 +201,7 @@ class LunarDate {
       day: dayOfMonth,
       isLeap: isLeapMonth,
       monthNameStr: finalShowName,
+      monthSize: result.dx[arrayIndex],
     );
   }
 
