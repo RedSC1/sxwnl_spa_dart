@@ -57,13 +57,30 @@ final double csAgx = csAU / csGS / 86400 / 36525;
 /// 原函数名：int2(v)
 int int2(double v) => v.floor();
 
+/// 模拟 JavaScript 的 `%` 运算符。
+///
+/// JS 的 `%` 对负数是向零截断 (truncate)，
+/// 而 Dart 的 `%` 是向负无穷取整 (floor)，两者对负数行为不同。
+/// 例如：JS: `-1.7 % 1 = -0.7`，Dart: `-1.7 % 1 = 0.3`。
+double jsMod(double a, double b) {
+  return a - b * (a / b).truncateToDouble();
+}
+
+/// 模拟 JavaScript 的 `mod2(v,n) = (v%n+n)%n`，保证返回 `[0, n)` 正余数。
+///
+/// 原函数名：mod2(v, n)  — eph0.js 第 42 行的版本。
+/// 使用 [jsMod] 模拟 JS `%` 以确保对负数行为一致。
+double jsMod2(double v, double n) {
+  return jsMod(jsMod(v, n) + n, n);
+}
+
 /// 临界余数：a 与最近的整倍数 b 相差的距离。
 ///
 /// 原函数名：mod2(a, b)
 /// 注意：sxwnl 中有两个 mod2，这里用的是后面那个（临界余数版本），
 /// 因为它在历法计算中被广泛使用。
 double mod2(double a, double b) {
-  var c = (a + b) % b;
+  var c = jsMod(a + b, b);
   if (c > b / 2.0) c -= b;
   return c;
 }
@@ -72,7 +89,7 @@ double mod2(double a, double b) {
 ///
 /// 原函数名：rad2mrad(v)
 double rad2mrad(double v) {
-  v = v % pi2;
+  v = jsMod(v, pi2);
   if (v < 0) v += pi2;
   return v;
 }
@@ -81,8 +98,59 @@ double rad2mrad(double v) {
 ///
 /// 原函数名：rad2rrad(v)
 double rad2rrad(double v) {
-  v = v % pi2;
+  v = jsMod(v, pi2);
   if (v <= -math.pi) v += pi2;
   if (v > math.pi) v -= pi2;
   return v;
+}
+
+// ==================== 坐标转换 ====================
+
+/// 黄道赤道坐标变换
+///
+/// [z] 为 [经度, 纬度, 距离] 形式的数组，距离不参与变换。
+/// [e] 是对应时刻的黄赤交角或赤道所在的球面参考坐标系的倾角。
+/// 返回从黄道转换到赤道（或赤道转换到地平）的新 [经度, 纬度, 距离]。
+///
+/// 原函数名：llrConv(z, E)
+List<double> llrConv(List<double> z, double e) {
+  final jj = z[0];
+  final w = z[1];
+  final sinE = math.sin(e);
+  final cosE = math.cos(e);
+  final sinW = math.sin(w);
+  final cosW = math.cos(w);
+
+  final j = math.atan2(math.sin(jj) * cosE - sinW / cosW * sinE, math.cos(jj));
+  var W = math.asin(sinW * cosE + cosW * math.sin(e) * math.sin(jj));
+  return [rad2mrad(j), W, if (z.length > 2) z[2] else 0.0];
+}
+
+// ==================== 恒星时计算 ====================
+
+/// 平恒星时计算 (适用于J2000平春分点)
+///
+/// [jd] 为 UT 世界时，[dt] 为 TD - UT。
+/// 或者两者相加 jd+dt=TD。返回值为平恒星时 (弧度)。
+/// 精度比原版稍高，直接采用 IAU1982 标准公式。
+///
+/// 返回格林尼治平恒星时(不含赤经章动及非多项式部分),即格林尼治子午圈的平春风点起算的赤经
+/// 传入[jd]是2000年首起算的日数(UT), [dt]是deltatT(日)
+/// 原函数名：pGST(T, dt)
+double pGst(double jd, double dt) {
+  final t = (jd + dt) / 36525.0; // 世纪数
+  final t2 = t * t;
+  final t3 = t2 * t;
+  final t4 = t3 * t;
+
+  double v =
+      pi2 * (0.7790572732640 + 1.00273781191135448 * jd) +
+      (0.014506 +
+              4612.15739966 * t +
+              1.39667721 * t2 -
+              0.00009344 * t3 +
+              0.00001882 * t4) /
+          rad;
+
+  return rad2mrad(v);
 }

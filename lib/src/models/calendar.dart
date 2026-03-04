@@ -88,14 +88,16 @@ class DayInfo {
   String get weekdayName => _weekdayLabel[weekday - 1];
 
   /// 根据级别过滤节日
-  /// 
+  ///
   /// 默认保留 [statutory], [traditional], [popular] 级别的节日。
   List<Festival> getFestivalsByLevel({Set<FestivalLevel>? levels}) {
-    final filter = levels ?? {
-      FestivalLevel.statutory,
-      FestivalLevel.traditional,
-      FestivalLevel.popular,
-    };
+    final filter =
+        levels ??
+        {
+          FestivalLevel.statutory,
+          FestivalLevel.traditional,
+          FestivalLevel.popular,
+        };
     return festivals.where((f) => filter.contains(f.level)).toList();
   }
 
@@ -117,7 +119,7 @@ class DayInfo {
 
     if (solarTerm != null) s += ' [$solarTerm ${_timeStr(solarTermTime!)}]';
     if (moonPhase != null) s += ' ($moonPhase ${_timeStr(moonPhaseTime!)})';
-    
+
     if (polarStatus == PolarStatus.polarDay) {
       s += ' {全天极昼}';
     } else if (polarStatus == PolarStatus.polarNight) {
@@ -162,10 +164,13 @@ List<YearInfo> getYearRange(int startYear, int endYear) {
   return result;
 }
 
-List<GanZhi> getYearMonthGanZhi(TianGan yearGan) => List.generate(12, (i) => monthGanZhi(yearGan, i));
-List<GanZhi> getDayHourGanZhi(TianGan dayGan) => List.generate(12, (i) => hourGanZhi(dayGan, i));
+List<GanZhi> getYearMonthGanZhi(TianGan yearGan) =>
+    List.generate(12, (i) => monthGanZhi(yearGan, i));
+List<GanZhi> getDayHourGanZhi(TianGan dayGan) =>
+    List.generate(12, (i) => hourGanZhi(dayGan, i));
 
-GanZhi dayGanZhi(AstroDateTime date) => _ganZhiFromDayId(_dayId(date.year, date.month, date.day));
+GanZhi dayGanZhi(AstroDateTime date) =>
+    _ganZhiFromDayId(_dayId(date.year, date.month, date.day));
 
 GanZhi dayGanZhiAt(AstroDateTime dateTime, {bool splitRatHour = false}) {
   int year = dateTime.year;
@@ -173,32 +178,50 @@ GanZhi dayGanZhiAt(AstroDateTime dateTime, {bool splitRatHour = false}) {
   int day = dateTime.day;
   if (!splitRatHour && dateTime.hour >= 23) {
     final nextDay = AstroDateTime(year, month, day).add(Duration(days: 1));
-    year = nextDay.year; month = nextDay.month; day = nextDay.day;
+    year = nextDay.year;
+    month = nextDay.month;
+    day = nextDay.day;
   }
   return _ganZhiFromDayId(_dayId(year, month, day));
 }
 
-int _dayId(int year, int month, int day) => AstroDateTime(year, month, day, 12, 0, 0).toJ2000().floor();
+int _dayId(int year, int month, int day) =>
+    AstroDateTime(year, month, day, 12, 0, 0).toJ2000().floor();
 
 GanZhi _ganZhiFromDayId(int D) {
   final offset = D - 6;
-  return GanZhi(TianGan.values[((offset % 10) + 10) % 10], DiZhi.values[((offset % 12) + 12) % 12]);
+  return GanZhi(
+    TianGan.values[((offset % 10) + 10) % 10],
+    DiZhi.values[((offset % 12) + 12) % 12],
+  );
 }
 
-int weekday(AstroDateTime date) => ((_dayId(date.year, date.month, date.day) + 5) % 7 + 7) % 7 + 1;
+int weekday(AstroDateTime date) =>
+    ((_dayId(date.year, date.month, date.day) + 5) % 7 + 7) % 7 + 1;
 
 GanZhi hourGanZhi(TianGan dayGan, int hourIndex) {
   final startGanIdx = (dayGan.index % 5) * 2;
-  return GanZhi(TianGan.values[(startGanIdx + hourIndex) % 10], DiZhi.values[hourIndex % 12]);
+  return GanZhi(
+    TianGan.values[(startGanIdx + hourIndex) % 10],
+    DiZhi.values[hourIndex % 12],
+  );
 }
 
 GanZhi monthGanZhi(TianGan yearGan, int monthIndex) {
   final startGanIdx = ((yearGan.index % 5) * 2 + 2) % 10;
-  return GanZhi(TianGan.values[(startGanIdx + monthIndex) % 10], DiZhi.values[(monthIndex + 2) % 12]);
+  return GanZhi(
+    TianGan.values[(startGanIdx + monthIndex) % 10],
+    DiZhi.values[(monthIndex + 2) % 12],
+  );
 }
 
 /// 获取日期范围内每一天的日历详细信息
-List<DayInfo> getDayRange(AstroDateTime start, AstroDateTime end, {Location? location}) {
+List<DayInfo> getDayRange(
+  AstroDateTime start,
+  AstroDateTime end, {
+  Location? location,
+  SolarCalcMethod solarMethod = SolarCalcMethod.spa,
+}) {
   final startDate = AstroDateTime(start.year, start.month, start.day, 12, 0, 0);
   final endDate = AstroDateTime(end.year, end.month, end.day, 12, 0, 0);
   final startJd = startDate.toJ2000();
@@ -207,58 +230,62 @@ List<DayInfo> getDayRange(AstroDateTime start, AstroDateTime end, {Location? loc
   if (totalDays <= 0) return [];
 
   final years = <int>{};
-  for (int i = 0; i < totalDays; i++) years.add(startDate.add(Duration(days: i)).year);
-  
+  for (int i = 0; i < totalDays; i++)
+    years.add(startDate.add(Duration(days: i)).year);
+
   final jqMap = <String, JieQiResult>{};
   for (final y in years) {
     for (final jq in getYearJieQi(y)) {
-      final key = "${jq.dateTime.year}-${_pad(jq.dateTime.month)}-${_pad(jq.dateTime.day)}";
+      final key =
+          "${jq.dateTime.year}-${_pad(jq.dateTime.month)}-${_pad(jq.dateTime.day)}";
       jqMap[key] = jq;
     }
   }
 
   final result = <DayInfo>[];
-  
+
   for (int i = 0; i < totalDays; i++) {
     final date = startDate.add(Duration(days: i));
     final currentJD = date.toJ2000();
-    
+
     final lunar = LunarDate.fromSolar(date);
     final gz = dayGanZhi(date);
     final dateKey = "${date.year}-${_pad(date.month)}-${_pad(date.day)}";
     final jq = jqMap[dateKey];
-    
+
     final mp = AstroEvents.getMoonPhase(date);
     final constellation = AstroEvents.getConstellation(currentJD);
-    
+
     // 调用全新的 5 级节日系统 (包含三伏、数九)
     final ftvs = FestivalEngine.getFestivals(date, lunar, gz);
 
     AstroDateTime? sunrise, sunset;
     PolarStatus polarStatus = PolarStatus.none;
     if (location != null) {
-      final solarRes = calcTrueSolarTime(date, location);
+      final solarRes = calcTrueSolarTime(date, location, method: solarMethod);
       sunrise = solarRes.sunrise;
       sunset = solarRes.sunset;
       polarStatus = solarRes.polarStatus;
     }
 
-    result.add(DayInfo(
-      solarDate: AstroDateTime(date.year, date.month, date.day),
-      lunarDate: lunar,
-      lunarMonthSize: lunar.monthSize,
-      ganZhi: gz,
-      weekday: weekday(date),
-      constellation: constellation,
-      festivals: ftvs,
-      polarStatus: polarStatus,
-      solarTerm: jq?.name,
-      solarTermTime: jq?.dateTime,
-      moonPhase: mp?.name,
-      moonPhaseTime: mp?.dateTime,
-      sunrise: sunrise,
-      sunset: sunset,
-    ));
+    result.add(
+      DayInfo(
+        solarDate: AstroDateTime(date.year, date.month, date.day),
+        lunarDate: lunar,
+        lunarMonthSize: lunar.monthSize,
+        ganZhi: gz,
+        weekday: weekday(date),
+        constellation: constellation,
+        festivals: ftvs,
+        polarStatus: polarStatus,
+        solarTerm: jq?.name,
+        solarTermTime: jq?.dateTime,
+        moonPhase: mp?.name,
+        moonPhaseTime: mp?.dateTime,
+        sunrise: sunrise,
+        sunset: sunset,
+      ),
+    );
   }
   return result;
 }
@@ -270,34 +297,68 @@ String _timeStr(AstroDateTime dt) => dt.toTimeString();
 // 快捷接口
 // ================================================================
 
-List<DayInfo> getSolarMonthDays(int year, int month, {Location? location}) {
+List<DayInfo> getSolarMonthDays(
+  int year,
+  int month, {
+  Location? location,
+  SolarCalcMethod solarMethod = SolarCalcMethod.spa,
+}) {
   final start = AstroDateTime(year, month, 1);
   int nextMonth = month + 1, nextYear = year;
-  if (nextMonth > 12) { nextMonth = 1; nextYear++; }
-  final daysInMonth = (AstroDateTime(nextYear, nextMonth, 1).toJ2000() - start.toJ2000()).round();
-  return getDayRange(start, AstroDateTime(year, month, daysInMonth), location: location);
+  if (nextMonth > 12) {
+    nextMonth = 1;
+    nextYear++;
+  }
+  final daysInMonth =
+      (AstroDateTime(nextYear, nextMonth, 1).toJ2000() - start.toJ2000())
+          .round();
+  return getDayRange(
+    start,
+    AstroDateTime(year, month, daysInMonth),
+    location: location,
+    solarMethod: solarMethod,
+  );
 }
 
-List<DayInfo> getLunarMonthDays(int lunarYear, String monthName, {Location? location}) {
+List<DayInfo> getLunarMonthDays(
+  int lunarYear,
+  String monthName, {
+  Location? location,
+  SolarCalcMethod solarMethod = SolarCalcMethod.spa,
+}) {
   final startSolar = LunarDate.fromString(lunarYear, monthName, 1).toSolar;
   final result = SSQ().calcY(AstroDateTime(lunarYear, 6, 1).toJ2000());
   int daysInMonth = 30;
   for (int i = 0; i < result.ym.length; i++) {
-    if (_matchLunarMonth(result, i, monthName)) { daysInMonth = result.dx[i]; break; }
+    if (_matchLunarMonth(result, i, monthName)) {
+      daysInMonth = result.dx[i];
+      break;
+    }
   }
-  return getDayRange(AstroDateTime(startSolar.year, startSolar.month, startSolar.day), startSolar.add(Duration(days: daysInMonth - 1)), location: location);
+  return getDayRange(
+    AstroDateTime(startSolar.year, startSolar.month, startSolar.day),
+    startSolar.add(Duration(days: daysInMonth - 1)),
+    location: location,
+    solarMethod: solarMethod,
+  );
 }
 
 bool _matchLunarMonth(dynamic result, int index, String targetName) {
   final rawName = result.ym[index];
   final isLeapIdx = (result.leap > 0 && index == result.leap);
   if (rawName == targetName) return true;
-  if (targetName.startsWith("闰")) return rawName == targetName.replaceAll("闰", "") && isLeapIdx;
+  if (targetName.startsWith("闰"))
+    return rawName == targetName.replaceAll("闰", "") && isLeapIdx;
   return rawName == targetName && !isLeapIdx;
 }
 
-List<DayInfo> getJieQiPeriodDays(AstroDateTime date, {Location? location}) {
-  final start = getPrevJie(date)?.dateTime, end = getNextJie(date)?.dateTime.subtract(Duration(days: 1));
+List<DayInfo> getJieQiPeriodDays(
+  AstroDateTime date, {
+  Location? location,
+  SolarCalcMethod solarMethod = SolarCalcMethod.spa,
+}) {
+  final start = getPrevJie(date)?.dateTime,
+      end = getNextJie(date)?.dateTime.subtract(Duration(days: 1));
   if (start == null || end == null) return [];
-  return getDayRange(start, end, location: location);
+  return getDayRange(start, end, location: location, solarMethod: solarMethod);
 }

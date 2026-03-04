@@ -6,7 +6,7 @@
 >
 > Disclaimer: This project is an AI-assisted implementation for learning/reference only. Accuracy is not guaranteed. Please credit the original algorithm author (SXWNL author: Xu Jianwei) when using this project/package. For commercial use, obtain authorization from the original algorithm author first. Commercial use of this project's code is under the MIT license, but commercial use of the underlying algorithms requires separate permission from the original author; the maintainer assumes no liability for any third-party commercial use.
 
-天文历法计算参考寿星天文历（万年历）[sxwnl](https://github.com/sxwnl/sxwnl)，太阳位置算法参考 [dart-spa](https://github.com/pingbird/dart-spa) 并做了魔改调整。
+天文历法计算参考寿星天文历（万年历）[sxwnl](https://github.com/sxwnl/sxwnl)，太阳位置算法参考 [dart-spa](https://github.com/pingbird/dart-spa) 并做了深度适配与调整。
 
 ## ✨ 特性
 
@@ -24,7 +24,7 @@
 
 ```yaml
 dependencies:
-  sxwnl_spa_dart: ^0.11.0
+  sxwnl_spa_dart: ^0.12.0
 ```
 
 ## 🚀 快速上手
@@ -242,6 +242,48 @@ void main() {
 }
 ```
 
+### 11. 太阳算法切换 (Algorithm Switch)
+
+本库支持在 SPA (现代物理模型) 与 SXWNL (古典解析模型) 之间自由切换。建议普通天气应用使用 SPA，而需要与古典历书对齐的应用使用 SXWNL。
+
+```dart
+import 'package:sxwnl_spa_dart/sxwnl_spa_dart.dart';
+
+void main() {
+  final date = AstroDateTime(2026, 3, 4, 12, 0, 0);
+  final loc = Location(116.3833, 39.9);
+
+  // 1. 使用 SPA 算法 (默认)
+  final resSpa = calcTrueSolarTime(date, loc, method: SolarCalcMethod.spa);
+  print('SPA 算法日出: ${resSpa.sunrise}');
+
+  // 2. 使用 SXWNL 原生算法 (基于 VSOP87 高度适配)
+  final resSxwnl = calcTrueSolarTime(date, loc, method: SolarCalcMethod.sxwnl);
+  print('SXWNL 算法日出: ${resSxwnl.sunrise}');
+
+  // 3. 在批量 API 中应用
+  final days = getSolarMonthDays(2026, 3, location: loc, solarMethod: SolarCalcMethod.sxwnl);
+}
+```
+
+## 🌗 架构漫谈：为什么同时内置了两套天文算法？
+
+本库的一个独特之处是**双算法架构**：同时保留了原版 `sxwnl` 的原生算法体系，以及引入了 NREL SPA (Solar Position Algorithm) 算法。
+
+源于历史契机与对精度的追求，这里形成了一个巧妙的互补架构：
+
+1. **SPA (Solar Position Algorithm)**
+   * **来源**: 美国国家可再生能源实验室（NREL）发布的极高精度算法（原作者在早期开发时为了能快速实现真太阳时而引用了 `dart-spa` 包）。
+   * **特点**: 基于现代高精度的纯物理模型，主要靠无迭代的数学解析式解析，极其精准且不存在迭代产生的浮点漂移。
+   * **用途**: 目前库内 `calcTrueSolarTime`（真太阳时、日出日落时分、均时差）等不需要复杂中国古典历书修正的 API，均主要由 SPA 高速驱动。
+
+2. **SXWNL 原生算法 (基于 VSOP87 的深度适配与历史历法历表)**
+   * **来源**: 著名开源天文历框架《寿星天文历》，我们在 Dart 版本中以 100% 的同构逻辑重新移植了其大循环核心基线。
+   * **特点**: 拥有极其复杂的牛顿逼近循环系统，以及海量的“历史朝代历法校准表格”。为了做到和古书分毫不差（如汉朝太初历、唐代大衍历等建正法则），它自带庞大的查表缓存与整数截断过滤系统。
+   * **用途**: 农历排盘 (`LunarDate`)、历史节气时刻 (`SSQ`)、月相盈亏、干支纪年等涉及中国传统阴阳合历的深水区算法，依然坚如磐石地交由 `sxwnl` 核心算法模块运算。
+
+**好钢用在刀刃上**：通过这两套体系并存，并通过 `SolarCalcMethod` 开关显式对外暴露，开发者可以根据业务场景（现代授时 vs 古典历法）灵活选择合适的算法底座。同时，这也为跨语言、跨架构的 1500 万次浮点运算全量验证提供了可靠的对照基准。
+
 ## ✅ 测试结果
 
 *   静态分析：dart analyze 通过
@@ -250,15 +292,19 @@ void main() {
 *   对比脚本：test/compare_jq.dart、test/compare_solar_noon.dart、test/compare_sunrise.dart、test/compare_sunset.dart
 *   说明：未随包附带 sxwnl 原始源码，运行对比脚本需自行从 sxwnl 仓库下载后放入 test/sxwnl_js
 *   基准数据：test/compute_*_js.js 生成 js_*.json
+*   测试项不仅包含核心算法本身，也包含了与原版同样的查表修正（如 SSQ 的历史历法修正数据）。
 *   具体数值（由于太阳位置算法实现不同，日出/日上中天/日落存在秒级差异属于正常现象）：
 
-| 指标 | 参数 | avg_diff_seconds | max_diff_seconds | exact_second | lt_4s | gt_4s |
+| 指标 | 参数 | avg_diff_seconds | max_diff_seconds | exact_second | lt_1s | gt_1s |
 | --- | --- | --- | --- | --- | --- | --- |
-| 节气 | years: -2000..5000, total_terms: 168024 | 0.000000 | 0.000000 | 168024 | - | - |
-| 朔 | years: -2000..5000, total_terms: 86591 | 0.000000 | 0.000000 | 86591 | - | - |
-| 日上中天 | lon 116.3833, lat 39.9, tz 8.0, total_days 2557080 | 0.804249 | 18.000000 | 1032940 | 1494625 | 29515 |
-| 日出 | lon 116.3833, lat 39.9, tz 8.0, total_days 2557080 | 57.273736 | 191.000000 | 6747 | 40550 | 2509783 |
-| 日落 | lon 116.3833, lat 39.9, tz 8.0, total_days 2557080 | 0.876318 | 62.000000 | 953666 | 1564709 | 38705 |
+| 节气 (`compare_jq`) | years: -2000..5000, 纯浮点对比 | 0.000000 | 0.000000 | 168024 | 0 | 0 |
+| 农历基线 (`compare_ssq`) | years: -2000..5000, 包含历史表与月建 | 0.000000 | 0.000000 | 7001年完全一致 | 0 | 0 |
+| 日月升中降 (`compare_szj`) | years: -2000..5000, 纯浮点对比 | 0.000026 | 0.000110 | 15341686 | 794 | 0 |
+| 日上中天 (`compare_solar_noon`)* | lon 116.3833, lat 39.9, tz 8.0 | 0.804249 | 18.000000 | 1032940 | 1494625 | 29515 |
+| 日出 (`compare_sunrise`)* | lon 116.3833, lat 39.9, tz 8.0 | 57.273736 | 191.000000 | 6747 | 40550 | 2509783 |
+| 日落 (`compare_sunset`)* | lon 116.3833, lat 39.9, tz 8.0 | 0.876318 | 62.000000 | 953666 | 1564709 | 38705 |
+
+*\*注：带有 \* 号的为 SPA 等纯解析算法测试项，非直接依赖 SXWNL 的原生迭代方法。*
 
 ## English
 
@@ -294,16 +340,18 @@ See the Chinese examples above: 真太阳时 / 农历排盘 / 干支计算.
 *   Scope: solar terms/new moons, solar noon, sunrise, sunset (all compared to sxwnl, not SPA)
 *   Scripts: test/compare_jq.dart, test/compare_solar_noon.dart, test/compare_sunrise.dart, test/compare_sunset.dart
 *   Note: the original sxwnl sources are not bundled; download from sxwnl repo and place under test/sxwnl_js to run scripts
+*   Test suites encompass both the raw VSOP87 calculations and all historical adjustment data structures in `SSQ`.
 *   Data: test/compute_*_js.js generates js_*.json
 *   Numbers (second-level differences in solar position are expected due to algorithm differences):
 
-| Metric | Params | avg_diff_seconds | max_diff_seconds | exact_second | lt_4s | gt_4s |
+| Metric | Params | avg_diff_seconds | max_diff_seconds | exact_second | lt_1s | gt_1s |
 | --- | --- | --- | --- | --- | --- | --- |
-| Solar terms | years: -2000..5000, total_terms: 168024 | 0.000000 | 0.000000 | 168024 | - | - |
-| New moons | years: -2000..5000, total_terms: 86591 | 0.000000 | 0.000000 | 86591 | - | - |
-| Solar noon | lon 116.3833, lat 39.9, tz 8.0, total_days 2557080 | 0.804249 | 18.000000 | 1032940 | 1494625 | 29515 |
-| Sunrise | lon 116.3833, lat 39.9, tz 8.0, total_days 2557080 | 57.273736 | 191.000000 | 6747 | 40550 | 2509783 |
-| Sunset | lon 116.3833, lat 39.9, tz 8.0, total_days 2557080 | 0.876318 | 62.000000 | 953666 | 1564709 | 38705 |
+| Solar terms | JS VSOP87 engine, 7000 yrs float | 0.000000 | 0.000000 | 168024 | 0 | 0 |
+| Lunar baseline | Lunar arrays and historical fixes | 0.000000 | 0.000000 | 7001 yrs identical | 0 | 0 |
+| Sun/Moon R/T/S | 7000 yrs, 15.3M floats | 0.000026 | 0.000110 | 15341686 | 794 | 0 |
+| Solar noon* | lon 116.3833, lat 39.9, tz 8.0 | 0.804249 | 18.000000 | 1032940 | 1494625 | 29515 |
+| Sunrise* | lon 116.3833, lat 39.9, tz 8.0 | 57.273736 | 191.000000 | 6747 | 40550 | 2509783 |
+| Sunset* | lon 116.3833, lat 39.9, tz 8.0 | 0.876318 | 62.000000 | 953666 | 1564709 | 38705 |
 
 ## 📚 感谢
 

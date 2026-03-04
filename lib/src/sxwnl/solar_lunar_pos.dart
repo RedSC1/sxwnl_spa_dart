@@ -212,6 +212,34 @@ double msALon(double t, int mn, int sn) {
   return mLon(t, mn) + gxcMoonLon(t) - (eLon(t, sn) + gxcSunLon(t) + math.pi);
 }
 
+// ==================== 空间坐标 ====================
+
+/// 地球坐标 (黄经, 黄纬, 距离)。
+///
+/// [t] 儒略世纪数
+/// [n1] 黄经项数, [n2] 黄纬项数, [n3] 距离项数
+/// 返回 [黄经, 黄纬, 向径]。
+///
+/// 原函数名：e_coord(t, n1, n2, n3)
+List<double> eCoord(double t, int n1, int n2, int n3) {
+  return [
+    xl0Calc(0, 0, t, n1), // 黄经
+    xl0Calc(0, 1, t, n2), // 黄纬
+    xl0Calc(0, 2, t, n3), // 距离
+  ];
+}
+
+/// 月球黄道坐标 (黄经, 黄纬, 距离)。
+///
+/// [t] 儒略世纪数
+/// [n1] 黄经项数, [n2] 黄纬项数, [n3] 距离项数
+/// 返回 [黄经, 黄纬, 距离(千米)]。
+///
+/// 原函数名：m_coord(t, n1, n2, n3)
+List<double> mCoord(double t, int n1, int n2, int n3) {
+  return [xl1Calc(0, t, n1), xl1Calc(1, t, n2), xl1Calc(2, t, n3)];
+}
+
 // ==================== 速度估算 ====================
 
 /// 地球运动角速度估算（弧度/世纪）。
