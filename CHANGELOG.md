@@ -1,3 +1,16 @@
+## 0.13.0
+
+- **新增历史节气校正功能 (Historical Solar Terms Mapping)**：
+  - 在日历相关 API (`getDayRange`, `getSolarMonthDays`, `getLunarMonthDays`, `getJieQiPeriodDays`) 中新增 `useHistoricalSolarTerms` 可选参数（默认 `false`）。
+  - 该功能开启后，系统将自动调用 `SSQ` 历史修正表，将节气名称挂载到历史皇历印本对应的日期上（主要适配 1645-1929 年间的历法偏差），实现对寿星万年历原版行为的像素级还原。
+  - **内外解耦设计**：日历文字显示关联历史日期，而 DayInfo 内部的 `solarTermTime` 仍保持高精度现代天文学数值，兼顾“排盘精度”与“历书呈现”。
+- **强化八字计算准确性**：
+  - 明确八字模块 (`calcBaZi`, `calcGanZhi`) 逻辑，强制使用绝对天文精密定气（基于 VSOP87），不参与历史历本日期偏移。
+- **内部引用与 bug 修复**：
+  - **修复包引用冲突**：统一 `lib/` 内部模型文件（如 `lunar_date.dart`）的导入方式，解决 Package 与 Relative 混合导入导致的类型不识别问题。
+  - **健壮性优化**：修正了 `calendar.dart` 中个别私有方法的返回值缺失及未定义名称问题。
+  - **验证案例**：新增 1645 年（清顺治二年）测试案例，成功验证了“雨水”节气在平定气转换期的 2 日历史偏移。
+
 ## 0.12.0
 
 - **新增太阳计算算法切换功能 (Algorithm Switch)**：

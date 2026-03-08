@@ -1,4 +1,5 @@
-import 'package:sxwnl_spa_dart/sxwnl_spa_dart.dart';
+import '../astro_date_time.dart';
+import '../sxwnl/ssq.dart';
 
 class LunarDate {
   final int lunarYear;

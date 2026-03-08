@@ -221,6 +221,7 @@ List<DayInfo> getDayRange(
   AstroDateTime end, {
   Location? location,
   SolarCalcMethod solarMethod = SolarCalcMethod.spa,
+  bool useHistoricalSolarTerms = false,
 }) {
   final startDate = AstroDateTime(start.year, start.month, start.day, 12, 0, 0);
   final endDate = AstroDateTime(end.year, end.month, end.day, 12, 0, 0);
@@ -230,15 +231,44 @@ List<DayInfo> getDayRange(
   if (totalDays <= 0) return [];
 
   final years = <int>{};
-  for (int i = 0; i < totalDays; i++)
+  for (int i = 0; i < totalDays; i++) {
     years.add(startDate.add(Duration(days: i)).year);
+  }
 
   final jqMap = <String, JieQiResult>{};
+  final histJqMap = <String, JieQiResult>{};
+
   for (final y in years) {
+    // Exact Astronomical Time Map
     for (final jq in getYearJieQi(y)) {
       final key =
           "${jq.dateTime.year}-${_pad(jq.dateTime.month)}-${_pad(jq.dateTime.day)}";
       jqMap[key] = jq;
+    }
+
+    // Historical offset mapping
+    if (useHistoricalSolarTerms) {
+      final ssq = SSQ();
+      final res = ssq.calcY(AstroDateTime(y, 6, 1).toJ2000());
+
+      // Calculate start and end range for SSQ.zq elements
+      // ZQ contains 25 items from Winter Solstice of previous year to Winter Solstice of this year.
+      for (int k = 0; k < res.zq.length; k++) {
+        final jqJD = res.zq[k];
+        final dt = AstroDateTime.fromJ2000(jqJD);
+        final key = "${dt.year}-${_pad(dt.month)}-${_pad(dt.day)}";
+
+        // ZQ[0] = 冬至, ZQ[1] = 小寒
+        // jieQiNames[0] = 小寒, ..., jieQiNames[23] = 冬至
+        int mappedIndex = (k + 23) % 24;
+
+        histJqMap[key] = JieQiResult(
+          index: mappedIndex,
+          name: jieQiNames[mappedIndex],
+          jd: jqJD,
+          dateTime: dt,
+        );
+      }
     }
   }
 
@@ -251,7 +281,32 @@ List<DayInfo> getDayRange(
     final lunar = LunarDate.fromSolar(date);
     final gz = dayGanZhi(date);
     final dateKey = "${date.year}-${_pad(date.month)}-${_pad(date.day)}";
-    final jq = jqMap[dateKey];
+    final exactJq = jqMap[dateKey];
+
+    String? finalSolarTerm;
+    AstroDateTime? finalSolarTermTime;
+
+    if (useHistoricalSolarTerms) {
+      final histJq = histJqMap[dateKey];
+      if (histJq != null) {
+        finalSolarTerm = histJq.name;
+        // Search exact astronomical time for this specific solar term
+        // within a small ±3 day window since historical offset is mostly 1 day.
+        for (int offset = -3; offset <= 3; offset++) {
+          final searchDt = date.add(Duration(days: offset));
+          final searchKey =
+              "${searchDt.year}-${_pad(searchDt.month)}-${_pad(searchDt.day)}";
+          final exactCandidate = jqMap[searchKey];
+          if (exactCandidate != null && exactCandidate.name == finalSolarTerm) {
+            finalSolarTermTime = exactCandidate.dateTime;
+            break;
+          }
+        }
+      }
+    } else {
+      finalSolarTerm = exactJq?.name;
+      finalSolarTermTime = exactJq?.dateTime;
+    }
 
     final mp = AstroEvents.getMoonPhase(date);
     final constellation = AstroEvents.getConstellation(currentJD);
@@ -278,8 +333,8 @@ List<DayInfo> getDayRange(
         constellation: constellation,
         festivals: ftvs,
         polarStatus: polarStatus,
-        solarTerm: jq?.name,
-        solarTermTime: jq?.dateTime,
+        solarTerm: finalSolarTerm,
+        solarTermTime: finalSolarTermTime,
         moonPhase: mp?.name,
         moonPhaseTime: mp?.dateTime,
         sunrise: sunrise,
@@ -302,6 +357,7 @@ List<DayInfo> getSolarMonthDays(
   int month, {
   Location? location,
   SolarCalcMethod solarMethod = SolarCalcMethod.spa,
+  bool useHistoricalSolarTerms = false,
 }) {
   final start = AstroDateTime(year, month, 1);
   int nextMonth = month + 1, nextYear = year;
@@ -317,6 +373,7 @@ List<DayInfo> getSolarMonthDays(
     AstroDateTime(year, month, daysInMonth),
     location: location,
     solarMethod: solarMethod,
+    useHistoricalSolarTerms: useHistoricalSolarTerms,
   );
 }
 
@@ -325,6 +382,7 @@ List<DayInfo> getLunarMonthDays(
   String monthName, {
   Location? location,
   SolarCalcMethod solarMethod = SolarCalcMethod.spa,
+  bool useHistoricalSolarTerms = false,
 }) {
   final startSolar = LunarDate.fromString(lunarYear, monthName, 1).toSolar;
   final result = SSQ().calcY(AstroDateTime(lunarYear, 6, 1).toJ2000());
@@ -340,6 +398,7 @@ List<DayInfo> getLunarMonthDays(
     startSolar.add(Duration(days: daysInMonth - 1)),
     location: location,
     solarMethod: solarMethod,
+    useHistoricalSolarTerms: useHistoricalSolarTerms,
   );
 }
 
@@ -347,8 +406,9 @@ bool _matchLunarMonth(dynamic result, int index, String targetName) {
   final rawName = result.ym[index];
   final isLeapIdx = (result.leap > 0 && index == result.leap);
   if (rawName == targetName) return true;
-  if (targetName.startsWith("闰"))
+  if (targetName.startsWith("闰")) {
     return rawName == targetName.replaceAll("闰", "") && isLeapIdx;
+  }
   return rawName == targetName && !isLeapIdx;
 }
 
@@ -356,9 +416,16 @@ List<DayInfo> getJieQiPeriodDays(
   AstroDateTime date, {
   Location? location,
   SolarCalcMethod solarMethod = SolarCalcMethod.spa,
+  bool useHistoricalSolarTerms = false,
 }) {
   final start = getPrevJie(date)?.dateTime,
       end = getNextJie(date)?.dateTime.subtract(Duration(days: 1));
   if (start == null || end == null) return [];
-  return getDayRange(start, end, location: location, solarMethod: solarMethod);
+  return getDayRange(
+    start,
+    end,
+    location: location,
+    solarMethod: solarMethod,
+    useHistoricalSolarTerms: useHistoricalSolarTerms,
+  );
 }
