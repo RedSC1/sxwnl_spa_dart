@@ -150,14 +150,49 @@ double getSpecificJieQi(int year, int n) {
 // ==================== 内部 slot 定位引擎 ====================
 //
 // 每个节气在天文模型中对应一个"slot"编号。
-// slot 0 = 2000 年春分, slot 1 = 2000 年清明, ..., slot 24 = 2001 年春分。
+// slot 0 = 2000 年春分 (黄经 0), slot 1 = 2000 年清明 (黄经 15度), ..., slot 24 = 2001 年春分。
 // 对应的黄经弧度 w = slot * (π/12)。
 //
 // slot → jieQiNames 的映射：春分在天文模型中是 slot%24==0，
 // 在 jieQiNames 中是 index 5，所以 nameIndex = ((slot%24) + 5 + 24) % 24。
 
-/// 从儒略日估算 slot 编号。
-int _estimateSlot(double jd) => ((jd + 293) / 365.2422 * 24).floor();
+/// 获取指定时间的精确当前 slot 编号 (所处节气区间)。
+/// 返回的 slot 满足条件：对应节气的真太阳时 <= jd < 下一个节气的真太阳时。
+int _currentSlot(double jd) {
+  // 1. 粗放估算：以 2000年春分(约 JD=79.3) 为 slot 0 起点
+  int slot = ((jd - 79.3) / 365.2422 * 24).floor();
+
+  // 2. 闭环校准：找到那个独一无二的区间，使得 jd 刚好落在 [slot, slot+1) 之间。
+  // 由于估算误差最多1-2个档位，这里的 while 循环几乎总是执行 0-2 次。
+  final d = pi / 12;
+
+  while (true) {
+    double currentQi = qiAccurate(slot * d);
+
+    // 引入 1e-5 (~0.86秒) 的误差宽容度。
+    // 因 AstroDateTime 内部转换时会舍入到整数秒，如果目标时间恰好在交节当秒，
+    // roundTrip 回来的 jd 可能会往回偏最多 0.5 秒。1e-5 天足以覆盖此舍入误差。
+    final epsilon = 1e-5;
+
+    if (jd < currentQi - epsilon) {
+      // 当前节气在 jd 之后，说明估算偏大了，往前退
+      slot--;
+    } else {
+      // 当前节气在 jd 之前或等于 jd (符合下限)
+      // 检查上限：下一个节气是否在 jd 之后
+      double nextQi = qiAccurate((slot + 1) * d);
+      if (jd >= nextQi - epsilon) {
+        // jd 比下一个节气还大，说明估算偏小了，往后找
+        slot++;
+      } else {
+        // 完美命中： currentQi <= jd < nextQi
+        break;
+      }
+    }
+  }
+
+  return slot;
+}
 
 /// 将 slot 编号转换为 jieQiNames 索引 (0-23)。
 int _slotToIndex(int slot) => ((slot % 24) + 5 + 24) % 24;
@@ -177,20 +212,12 @@ JieQiResult _slotToResult(int slot) {
 /// 向前搜索：找到 targetJD 之前最近的节气。
 ///
 /// [filter] 可选过滤器，传 `isJie` 则只匹配节，传 `isQi` 则只匹配气。
-/// 内部仅需 2-3 次 qiAccurate 调用（对比旧版的 75 次）。
 JieQiResult _findPrev(double targetJD, {bool Function(int)? filter}) {
-  final d = pi / 12;
-  var slot = _estimateSlot(targetJD);
+  var slot = _currentSlot(
+    targetJD,
+  ); // 这里拿到的 slot 保证 qiAccurate(slot) <= targetJD
 
-  // 1. 定位：确保 slot 对应的节气 <= targetJD
-  if (qiAccurate(slot * d) > targetJD) {
-    slot--;
-  } else {
-    // 检查下一个 slot 是否也在 target 之前（轨道偏心率导致）
-    if (qiAccurate((slot + 1) * d) <= targetJD) slot++;
-  }
-
-  // 2. 过滤：如需只找节或只找气，往前退一步
+  // 过滤：如需只找节或只找气，往前退一步
   if (filter != null) {
     while (!filter(_slotToIndex(slot))) {
       slot--;
@@ -204,13 +231,9 @@ JieQiResult _findPrev(double targetJD, {bool Function(int)? filter}) {
 ///
 /// [filter] 可选过滤器，传 `isJie` 则只匹配节，传 `isQi` 则只匹配气。
 JieQiResult _findNext(double targetJD, {bool Function(int)? filter}) {
-  final d = pi / 12;
-  var slot = _estimateSlot(targetJD) + 1;
+  var slot = _currentSlot(targetJD) + 1; // 下一个节气必然是当前所在区间的下一个
 
-  // 1. 定位：确保 slot 对应的节气 > targetJD
-  if (qiAccurate(slot * d) <= targetJD) slot++;
-
-  // 2. 过滤
+  // 过滤：如需只找节或只找气
   if (filter != null) {
     while (!filter(_slotToIndex(slot))) {
       slot++;
