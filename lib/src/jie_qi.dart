@@ -12,10 +12,30 @@ import 'sxwnl/solar_lunar_pos.dart';
 /// 节（偶数索引）：小寒、立春、惊蛰、清明、立夏、芒种、小暑、立秋、白露、寒露、立冬、大雪
 /// 气（奇数索引）：大寒、雨水、春分、谷雨、小满、夏至、大暑、处暑、秋分、霜降、小雪、冬至
 const List<String> jieQiNames = [
-  '小寒', '大寒', '立春', '雨水', '惊蛰',
-  '春分', '清明', '谷雨', '立夏', '小满', '芒种',
-  '夏至', '小暑', '大暑', '立秋', '处暑', '白露',
-  '秋分', '寒露', '霜降', '立冬', '小雪', '大雪', '冬至',
+  '小寒',
+  '大寒',
+  '立春',
+  '雨水',
+  '惊蛰',
+  '春分',
+  '清明',
+  '谷雨',
+  '立夏',
+  '小满',
+  '芒种',
+  '夏至',
+  '小暑',
+  '大暑',
+  '立秋',
+  '处暑',
+  '白露',
+  '秋分',
+  '寒露',
+  '霜降',
+  '立冬',
+  '小雪',
+  '大雪',
+  '冬至',
 ];
 
 /// 判断一个节气是否是"节"。
@@ -53,18 +73,20 @@ class JieQiResult {
   String toString() => '$name: $dateTime';
 }
 
-  /// ### 高精度定气
-  ///
-  /// 已知太阳视黄经，反推精确的交节时刻。
-  ///
-  /// **调用注意：**
-  /// * **累计弧度 [w]**：注意！这不仅仅是 0 到 2π。它是从 J2000 开始算的**累计值**。
-  ///   - 0：2000 年春分
-  ///   - 2π：2001 年春分
-  ///   - 2π * n：第 n 年后的春分
-  ///   - 如果你只传 0 到 2π 之间的数，永远只能算出 2000 年那几个节气。
-  /// * **单位**：必须是弧度，别传角度。
-  /// * **返回值**：北京时间 (J2000 相对天数)。内部已处理过 ΔT 并强制 `+8/24`。
+// ==================== 核心定气计算 ====================
+
+/// ### 高精度定气
+///
+/// 已知太阳视黄经，反推精确的交节时刻。
+///
+/// **调用注意：**
+/// * **累计弧度 [w]**：注意！这不仅仅是 0 到 2π。它是从 J2000 开始算的**累计值**。
+///   - 0：2000 年春分
+///   - 2π：2001 年春分
+///   - 2π * n：第 n 年后的春分
+///   - 如果你只传 0 到 2π 之间的数，永远只能算出 2000 年那几个节气。
+/// * **单位**：必须是弧度，别传角度。
+/// * **返回值**：北京时间 (J2000 相对天数)。内部已处理过 ΔT 并强制 `+8/24`。
 double qiAccurate(double w) {
   final t = sALonT(w) * 36525.0;
   return t - dtT(t) + 8 / 24;
@@ -73,51 +95,137 @@ double qiAccurate(double w) {
 /// ### 智能定气搜索
 ///
 /// 根据给定的儒略日 [jd]，自动寻找并计算最近的一个精确节气时刻。
-/// 
+///
 /// **核心逻辑：**
 /// * **初值估算**：利用回归年长度（365.2422天）将 [jd] 转换为对应的**累计弧度** [w]。
 /// * **档位对齐**：`pi / 12` 代表 15 度（一个节气）。通过 `floor` 强行对齐到最近的节气档位。
-/// * **双重保险**：如果初次算出的时刻离 [jd] 超过 5 天，说明轨道摄动太猛导致“找错档位”了，会自动前后挪一个节气重算。
+/// * **双重保险**：如果初次算出的时刻离 [jd] 超过 5 天，说明轨道摄动太猛导致"找错档位"了，会自动前后挪一个节气重算。
 ///
 /// [jd] 为北京时间（相对 J2000 的天数）。
 double qiAccurate2(double jd) {
   final d = pi / 12;
-    
+
   // 这里的 293 是从 J2000 历元到冬至的偏移天数估算
   // 注意：必须用 .floor() 保证在处理古代负数年份时取整逻辑不走样
   var w = ((jd + 293) / 365.2422 * 24).floor() * d;
-    
+
   var a = qiAccurate(w);
-    
+
   // 容错校准：偏差超过 5 天则切换相邻节气档位
   if (a - jd > 5) return qiAccurate(w - d);
   if (a - jd < -5) return qiAccurate(w + d);
-    
-  return a;
 
+  return a;
 }
 
-/// 定义一个共用的辅助方法来获取覆盖 target 所在的节气列表
-List<JieQiResult> _getSurroundingJieQi(int year) {
-  final list1 = getYearJieQi(year - 1);
-  final list2 = getYearJieQi(year);
-  final list3 = getYearJieQi(year + 1);
-  final all = [...list1, ...list2, ...list3];
-  
-  // 去重
-  final uniqueAll = <JieQiResult>[];
-  for (final jq in all) {
-    if (uniqueAll.isEmpty || (jq.jd - uniqueAll.last.jd).abs() > 1e-9) {
-      uniqueAll.add(jq);
+/// ### 获取指定年份的特定节气时刻 (单点查询)
+///
+/// 利用太阳视黄经模型直接推算特定节气，不生成全年历表。
+///
+/// **参数约定：**
+/// * [year] 公历年份 (如 2026)。
+/// * [n] 节气序号 (0~23)，以**春分**为 0 起点：
+///   - 0=春分, 1=清明 ... 18=冬至 (发生于当年)
+///   - 19=小寒, 20=大寒, 21=立春, 22=雨水, 23=惊蛰 (发生于次年 1~3 月)
+///
+/// **跨年物理修正：**
+/// 天文学轨道周期以 3 月的春分为起点。当查询 1~3 月的节气 (n >= 19) 时，
+/// 物理模型上属于“上一个天文年”的末尾。内部已作自动偏移处理。
+double getSpecificJieQi(int year, int n) {
+  int astroYear = year;
+  // 修正 1~3 月节气的天文纪年偏移
+  if (n >= 19) {
+    astroYear -= 1;
+  }
+
+  // 计算累计弧度:
+  // (astroYear - 2000) * 2 * pi -> 2000年起算的整圈数
+  // n * (pi / 12) -> 当前圈内的局部节气偏移
+  final w = (astroYear - 2000) * 2 * pi + n * (pi / 12);
+
+  // 调用高精度定气，返回 J2000 相对天数 (北京时间)
+  return qiAccurate(w);
+}
+
+// ==================== 内部 slot 定位引擎 ====================
+//
+// 每个节气在天文模型中对应一个"slot"编号。
+// slot 0 = 2000 年春分, slot 1 = 2000 年清明, ..., slot 24 = 2001 年春分。
+// 对应的黄经弧度 w = slot * (π/12)。
+//
+// slot → jieQiNames 的映射：春分在天文模型中是 slot%24==0，
+// 在 jieQiNames 中是 index 5，所以 nameIndex = ((slot%24) + 5 + 24) % 24。
+
+/// 从儒略日估算 slot 编号。
+int _estimateSlot(double jd) => ((jd + 293) / 365.2422 * 24).floor();
+
+/// 将 slot 编号转换为 jieQiNames 索引 (0-23)。
+int _slotToIndex(int slot) => ((slot % 24) + 5 + 24) % 24;
+
+/// 从 slot 编号构造 [JieQiResult]（调用一次 qiAccurate）。
+JieQiResult _slotToResult(int slot) {
+  final jd = qiAccurate(slot * (pi / 12));
+  final idx = _slotToIndex(slot);
+  return JieQiResult(
+    index: idx,
+    name: jieQiNames[idx],
+    jd: jd,
+    dateTime: AstroDateTime.fromJ2000(jd),
+  );
+}
+
+/// 向前搜索：找到 targetJD 之前最近的节气。
+///
+/// [filter] 可选过滤器，传 `isJie` 则只匹配节，传 `isQi` 则只匹配气。
+/// 内部仅需 2-3 次 qiAccurate 调用（对比旧版的 75 次）。
+JieQiResult _findPrev(double targetJD, {bool Function(int)? filter}) {
+  final d = pi / 12;
+  var slot = _estimateSlot(targetJD);
+
+  // 1. 定位：确保 slot 对应的节气 <= targetJD
+  if (qiAccurate(slot * d) > targetJD) {
+    slot--;
+  } else {
+    // 检查下一个 slot 是否也在 target 之前（轨道偏心率导致）
+    if (qiAccurate((slot + 1) * d) <= targetJD) slot++;
+  }
+
+  // 2. 过滤：如需只找节或只找气，往前退一步
+  if (filter != null) {
+    while (!filter(_slotToIndex(slot))) {
+      slot--;
     }
   }
-  return uniqueAll;
+
+  return _slotToResult(slot);
 }
+
+/// 向后搜索：找到 targetJD 之后最近的节气。
+///
+/// [filter] 可选过滤器，传 `isJie` 则只匹配节，传 `isQi` 则只匹配气。
+JieQiResult _findNext(double targetJD, {bool Function(int)? filter}) {
+  final d = pi / 12;
+  var slot = _estimateSlot(targetJD) + 1;
+
+  // 1. 定位：确保 slot 对应的节气 > targetJD
+  if (qiAccurate(slot * d) <= targetJD) slot++;
+
+  // 2. 过滤
+  if (filter != null) {
+    while (!filter(_slotToIndex(slot))) {
+      slot++;
+    }
+  }
+
+  return _slotToResult(slot);
+}
+
+// ==================== 批量查询 ====================
 
 /// 获取指定阳历年的所有节气。
 ///
 /// [year] 阳历年（如 2025）。
-/// 返回从上一个冬至到当前冬至的节气列表（共25个节气，符合传统历法计算“岁”的范围）。
+/// 返回从上一个冬至到当前冬至的节气列表（共25个节气，符合传统历法计算"岁"的范围）。
 List<JieQiResult> getYearJieQi(int year) {
   final results = <JieQiResult>[];
   final y = year - 2000;
@@ -128,74 +236,72 @@ List<JieQiResult> getYearJieQi(int year) {
   for (var i = -6; i <= 18; i++) {
     final w = (y + i / 24 + 1) * 2 * pi;
     final jd = qiAccurate(w);
-    
+
     // 春分(i=0)在 jieQiNames 中的索引是 5
     int index = (i + 5) % 24;
     if (index < 0) {
       index += 24;
     }
-    
-    results.add(JieQiResult(
-      index: index,
-      name: jieQiNames[index],
-      jd: jd,
-      dateTime: AstroDateTime.fromJ2000(jd),
-    ));
+
+    results.add(
+      JieQiResult(
+        index: index,
+        name: jieQiNames[index],
+        jd: jd,
+        dateTime: AstroDateTime.fromJ2000(jd),
+      ),
+    );
   }
 
   return results;
 }
 
-/// 获取目标日期之前最近的一个节气。
-///
-/// [target] 目标日期。
-/// 返回上一个节气，如未找到则返回 null。
-JieQiResult? getPrevJieQi(AstroDateTime target) {
-  final all = _getSurroundingJieQi(target.year);
-  final targetJD = target.toJ2000();
+// ==================== 单点查询 API ====================
 
-  for (var i = all.length - 1; i >= 0; i--) {
-    if (all[i].jd <= targetJD) {
-      return all[i];
-    }
-  }
-  return null;
-}
+/// 获取目标日期之前最近的一个节气。
+JieQiResult? getPrevJieQi(AstroDateTime target) => _findPrev(target.toJ2000());
 
 /// 获取目标日期之后最近的一个节气。
+JieQiResult? getNextJieQi(AstroDateTime target) => _findNext(target.toJ2000());
+
+/// 获取目标日期之前最近的一个"节"。
+JieQiResult? getPrevJie(AstroDateTime target) =>
+    _findPrev(target.toJ2000(), filter: isJie);
+
+/// 获取目标日期之后最近的一个"节"。
+JieQiResult? getNextJie(AstroDateTime target) =>
+    _findNext(target.toJ2000(), filter: isJie);
+
+/// 获取目标日期之前最近的一个"气"。
+JieQiResult? getPrevQi(AstroDateTime target) =>
+    _findPrev(target.toJ2000(), filter: isQi);
+
+/// 获取目标日期之后最近的一个"气"。
+JieQiResult? getNextQi(AstroDateTime target) =>
+    _findNext(target.toJ2000(), filter: isQi);
+
+// ==================== 距离模型 ====================
+
+/// 通用节气区段距离模型（基类）。
 ///
-/// [target] 目标日期。
-/// 返回下一个节气，如未找到则返回 null。
-JieQiResult? getNextJieQi(AstroDateTime target) {
-  final all = _getSurroundingJieQi(target.year);
-  final targetJD = target.toJ2000();
-
-  for (var i = 0; i < all.length; i++) {
-    if (all[i].jd > targetJD) {
-      return all[i];
-    }
-  }
-  return null;
-}
-
-/// 目标日期与前后节气的距离信息。
-class JieQiDistance {
-  /// 上一个节气。
+/// [prev] 与 [next] 之间的时间区段，记录了目标日期在区段中的位置。
+class SolarTermSpan {
+  /// 区段起点节气。
   final JieQiResult prev;
 
-  /// 下一个节气。
+  /// 区段终点节气。
   final JieQiResult next;
 
-  /// 距离上一个节气的天数。
+  /// 距离起点的天数。
   final double daysSincePrev;
 
-  /// 距离下一个节气的天数。
+  /// 距离终点的天数。
   final double daysUntilNext;
 
-  /// 两个节气之间的总天数。
+  /// 区段总天数。
   final double totalDays;
 
-  JieQiDistance({
+  SolarTermSpan({
     required this.prev,
     required this.next,
     required this.daysSincePrev,
@@ -203,7 +309,7 @@ class JieQiDistance {
     required this.totalDays,
   });
 
-  /// 在两个节气之间的进度（0.0 - 1.0）。
+  /// 在区段中的进度（0.0 - 1.0）。
   double get progress => daysSincePrev / totalDays;
 
   @override
@@ -214,19 +320,94 @@ class JieQiDistance {
   }
 }
 
-/// 获取目标日期与前后节气的距离信息。
-///
-/// [target] 目标日期。
-/// 返回节气距离信息，如未找到则返回 null。
-JieQiDistance? getJieQiDistance(AstroDateTime target) {
-  final prev = getPrevJieQi(target);
-  final next = getNextJieQi(target);
+/// 目标日期与前后节气的距离信息（向后兼容）。
+class JieQiDistance extends SolarTermSpan {
+  JieQiDistance({
+    required super.prev,
+    required super.next,
+    required super.daysSincePrev,
+    required super.daysUntilNext,
+    required super.totalDays,
+  });
+}
 
+/// 目标日期与前后"节"的距离信息（向后兼容）。
+class JieDistance extends SolarTermSpan {
+  JieDistance({
+    required JieQiResult prevJie,
+    required JieQiResult nextJie,
+    required double daysSincePrevJie,
+    required double daysUntilNextJie,
+    required double totalJieDays,
+  }) : super(
+         prev: prevJie,
+         next: nextJie,
+         daysSincePrev: daysSincePrevJie,
+         daysUntilNext: daysUntilNextJie,
+         totalDays: totalJieDays,
+       );
+
+  // 向后兼容的别名
+  JieQiResult get prevJie => prev;
+  JieQiResult get nextJie => next;
+  double get daysSincePrevJie => daysSincePrev;
+  double get daysUntilNextJie => daysUntilNext;
+  double get totalJieDays => totalDays;
+  double get jieProgress => progress;
+
+  @override
+  String toString() {
+    return '距${prev.name}: ${daysSincePrev.toStringAsFixed(2)}天, '
+        '距${next.name}: ${daysUntilNext.toStringAsFixed(2)}天, '
+        '节进度: ${(progress * 100).toStringAsFixed(1)}%';
+  }
+}
+
+/// 目标日期与前后"气"的距离信息（向后兼容）。
+class QiDistance extends SolarTermSpan {
+  QiDistance({
+    required JieQiResult prevQi,
+    required JieQiResult nextQi,
+    required double daysSincePrevQi,
+    required double daysUntilNextQi,
+    required double totalQiDays,
+  }) : super(
+         prev: prevQi,
+         next: nextQi,
+         daysSincePrev: daysSincePrevQi,
+         daysUntilNext: daysUntilNextQi,
+         totalDays: totalQiDays,
+       );
+
+  // 向后兼容的别名
+  JieQiResult get prevQi => prev;
+  JieQiResult get nextQi => next;
+  double get daysSincePrevQi => daysSincePrev;
+  double get daysUntilNextQi => daysUntilNext;
+  double get totalQiDays => totalDays;
+  double get qiProgress => progress;
+
+  @override
+  String toString() {
+    return '距${prev.name}: ${daysSincePrev.toStringAsFixed(2)}天, '
+        '距${next.name}: ${daysUntilNext.toStringAsFixed(2)}天, '
+        '气进度: ${(progress * 100).toStringAsFixed(1)}%';
+  }
+}
+
+// ==================== 距离查询 API ====================
+
+/// 内部通用距离计算引擎。
+SolarTermSpan? _getSpan(
+  AstroDateTime target,
+  JieQiResult? Function(AstroDateTime) prevGetter,
+  JieQiResult? Function(AstroDateTime) nextGetter,
+) {
+  final prev = prevGetter(target);
+  final next = nextGetter(target);
   if (prev == null || next == null) return null;
-
   final targetJD = target.toJ2000();
-
-  return JieQiDistance(
+  return SolarTermSpan(
     prev: prev,
     next: next,
     daysSincePrev: targetJD - prev.jd,
@@ -235,183 +416,46 @@ JieQiDistance? getJieQiDistance(AstroDateTime target) {
   );
 }
 
-/// 获取目标日期之前最近的一个"节"。
-///
-/// [target] 目标日期。
-/// 返回上一个节，如未找到则返回 null。
-JieQiResult? getPrevJie(AstroDateTime target) {
-  final all = _getSurroundingJieQi(target.year);
-  final targetJD = target.toJ2000();
-
-  for (var i = all.length - 1; i >= 0; i--) {
-    if (all[i].jd <= targetJD && isJie(all[i].index)) {
-      return all[i];
-    }
-  }
-  return null;
+/// 获取目标日期与前后节气的距离信息。
+JieQiDistance? getJieQiDistance(AstroDateTime target) {
+  final s = _getSpan(target, getPrevJieQi, getNextJieQi);
+  if (s == null) return null;
+  return JieQiDistance(
+    prev: s.prev,
+    next: s.next,
+    daysSincePrev: s.daysSincePrev,
+    daysUntilNext: s.daysUntilNext,
+    totalDays: s.totalDays,
+  );
 }
 
-/// 获取目标日期之前最近的一个"气"。
-///
-/// [target] 目标日期。
-/// 返回上一个气，如未找到则返回 null。
-JieQiResult? getPrevQi(AstroDateTime target) {
-  final all = _getSurroundingJieQi(target.year);
-  final targetJD = target.toJ2000();
-
-  for (var i = all.length - 1; i >= 0; i--) {
-    if (all[i].jd <= targetJD && isQi(all[i].index)) {
-      return all[i];
-    }
-  }
-  return null;
-}
-
-/// 获取目标日期之后最近的一个"节"。
-///
-/// [target] 目标日期。
-/// 返回下一个节，如未找到则返回 null。
-JieQiResult? getNextJie(AstroDateTime target) {
-  final all = _getSurroundingJieQi(target.year);
-  final targetJD = target.toJ2000();
-
-  for (var i = 0; i < all.length; i++) {
-    if (all[i].jd > targetJD && isJie(all[i].index)) {
-      return all[i];
-    }
-  }
-  return null;
-}
-
-/// 获取目标日期之后最近的一个"气"。
-///
-/// [target] 目标日期。
-/// 返回下一个气，如未找到则返回 null。
-JieQiResult? getNextQi(AstroDateTime target) {
-  final all = _getSurroundingJieQi(target.year);
-  final targetJD = target.toJ2000();
-
-  for (var i = 0; i < all.length; i++) {
-    if (all[i].jd > targetJD && isQi(all[i].index)) {
-      return all[i];
-    }
-  }
-  return null;
-}
-
-/// 目标日期与前后节的距离信息。
-class JieDistance {
-  /// 上一个节。
-  final JieQiResult prevJie;
-
-  /// 下一个节。
-  final JieQiResult nextJie;
-
-  /// 距离上一个节的天数。
-  final double daysSincePrevJie;
-
-  /// 距离下一个节的天数。
-  final double daysUntilNextJie;
-
-  /// 两个节之间的总天数。
-  final double totalJieDays;
-
-  JieDistance({
-    required this.prevJie,
-    required this.nextJie,
-    required this.daysSincePrevJie,
-    required this.daysUntilNextJie,
-    required this.totalJieDays,
-  });
-
-  /// 在两个节之间的进度（0.0 - 1.0）。
-  double get jieProgress => daysSincePrevJie / totalJieDays;
-
-  @override
-  String toString() {
-    return '距${prevJie.name}: ${daysSincePrevJie.toStringAsFixed(2)}天, '
-        '距${nextJie.name}: ${daysUntilNextJie.toStringAsFixed(2)}天, '
-        '节进度: ${(jieProgress * 100).toStringAsFixed(1)}%';
-  }
-}
-
-/// 目标日期与前后气的距离信息。
-class QiDistance {
-  /// 上一个气。
-  final JieQiResult prevQi;
-
-  /// 下一个气。
-  final JieQiResult nextQi;
-
-  /// 距离上一个气的天数。
-  final double daysSincePrevQi;
-
-  /// 距离下一个气的天数。
-  final double daysUntilNextQi;
-
-  /// 两个气之间的总天数。
-  final double totalQiDays;
-
-  QiDistance({
-    required this.prevQi,
-    required this.nextQi,
-    required this.daysSincePrevQi,
-    required this.daysUntilNextQi,
-    required this.totalQiDays,
-  });
-
-  /// 在两个气之间的进度（0.0 - 1.0）。
-  double get qiProgress => daysSincePrevQi / totalQiDays;
-
-  @override
-  String toString() {
-    return '距${prevQi.name}: ${daysSincePrevQi.toStringAsFixed(2)}天, '
-        '距${nextQi.name}: ${daysUntilNextQi.toStringAsFixed(2)}天, '
-        '气进度: ${(qiProgress * 100).toStringAsFixed(1)}%';
-  }
-}
-
-/// 获取目标日期与前后节的距离信息。
-///
-/// [target] 目标日期。
-/// 返回节距离信息，如未找到则返回 null。
+/// 获取目标日期与前后"节"的距离信息。
 JieDistance? getJieDistance(AstroDateTime target) {
-  final prevJie = getPrevJie(target);
-  final nextJie = getNextJie(target);
-
-  if (prevJie == null || nextJie == null) return null;
-
-  final targetJD = target.toJ2000();
-
+  final s = _getSpan(target, getPrevJie, getNextJie);
+  if (s == null) return null;
   return JieDistance(
-    prevJie: prevJie,
-    nextJie: nextJie,
-    daysSincePrevJie: targetJD - prevJie.jd,
-    daysUntilNextJie: nextJie.jd - targetJD,
-    totalJieDays: nextJie.jd - prevJie.jd,
+    prevJie: s.prev,
+    nextJie: s.next,
+    daysSincePrevJie: s.daysSincePrev,
+    daysUntilNextJie: s.daysUntilNext,
+    totalJieDays: s.totalDays,
   );
 }
 
-/// 获取目标日期与前后气的距离信息。
-///
-/// [target] 目标日期。
-/// 返回气距离信息，如未找到则返回 null。
+/// 获取目标日期与前后"气"的距离信息。
 QiDistance? getQiDistance(AstroDateTime target) {
-  final prevQi = getPrevQi(target);
-  final nextQi = getNextQi(target);
-
-  if (prevQi == null || nextQi == null) return null;
-
-  final targetJD = target.toJ2000();
-
+  final s = _getSpan(target, getPrevQi, getNextQi);
+  if (s == null) return null;
   return QiDistance(
-    prevQi: prevQi,
-    nextQi: nextQi,
-    daysSincePrevQi: targetJD - prevQi.jd,
-    daysUntilNextQi: nextQi.jd - targetJD,
-    totalQiDays: nextQi.jd - prevQi.jd,
+    prevQi: s.prev,
+    nextQi: s.next,
+    daysSincePrevQi: s.daysSincePrev,
+    daysUntilNextQi: s.daysUntilNext,
+    totalQiDays: s.totalDays,
   );
 }
+
+// ==================== 综合信息 ====================
 
 /// 目标日期的完整节、气信息。
 class JieQiInfo {
@@ -475,9 +519,6 @@ class JieQiInfo {
 }
 
 /// 获取目标日期的完整节、气信息。
-///
-/// [target] 目标日期。
-/// 返回完整信息，如未找到则返回 null。
 JieQiInfo? getJieQiInfo(AstroDateTime target) {
   final prevJieQi = getPrevJieQi(target);
   final nextJieQi = getNextJieQi(target);
@@ -486,7 +527,12 @@ JieQiInfo? getJieQiInfo(AstroDateTime target) {
   final prevQi = getPrevQi(target);
   final nextQi = getNextQi(target);
 
-  if (prevJieQi == null || nextJieQi == null || prevJie == null || nextJie == null || prevQi == null || nextQi == null) {
+  if (prevJieQi == null ||
+      nextJieQi == null ||
+      prevJie == null ||
+      nextJie == null ||
+      prevQi == null ||
+      nextQi == null) {
     return null;
   }
 
@@ -508,61 +554,27 @@ JieQiInfo? getJieQiInfo(AstroDateTime target) {
   );
 }
 
-// ========== Julian Day 版本 ==========
+// ==================== Julian Day 便捷接口 ====================
 
 /// 获取目标日期之前最近的一个节气的 Julian Day。
-///
-/// [target] 目标日期。
-/// 返回 J2000 相对儒略日，如未找到则返回 null。
-double? getPrevJieQiJd(AstroDateTime target) {
-  return getPrevJieQi(target)?.jd;
-}
+double? getPrevJieQiJd(AstroDateTime target) => getPrevJieQi(target)?.jd;
 
 /// 获取目标日期之后最近的一个节气的 Julian Day。
-///
-/// [target] 目标日期。
-/// 返回 J2000 相对儒略日，如未找到则返回 null。
-double? getNextJieQiJd(AstroDateTime target) {
-  return getNextJieQi(target)?.jd;
-}
+double? getNextJieQiJd(AstroDateTime target) => getNextJieQi(target)?.jd;
 
 /// 获取目标日期之前最近的一个"节"的 Julian Day。
-///
-/// [target] 目标日期。
-/// 返回 J2000 相对儒略日，如未找到则返回 null。
-double? getPrevJieJd(AstroDateTime target) {
-  return getPrevJie(target)?.jd;
-}
+double? getPrevJieJd(AstroDateTime target) => getPrevJie(target)?.jd;
 
 /// 获取目标日期之后最近的一个"节"的 Julian Day。
-///
-/// [target] 目标日期。
-/// 返回 J2000 相对儒略日，如未找到则返回 null。
-double? getNextJieJd(AstroDateTime target) {
-  return getNextJie(target)?.jd;
-}
+double? getNextJieJd(AstroDateTime target) => getNextJie(target)?.jd;
 
 /// 获取目标日期之前最近的一个"气"的 Julian Day。
-///
-/// [target] 目标日期。
-/// 返回 J2000 相对儒略日，如未找到则返回 null。
-double? getPrevQiJd(AstroDateTime target) {
-  return getPrevQi(target)?.jd;
-}
+double? getPrevQiJd(AstroDateTime target) => getPrevQi(target)?.jd;
 
 /// 获取目标日期之后最近的一个"气"的 Julian Day。
-///
-/// [target] 目标日期。
-/// 返回 J2000 相对儒略日，如未找到则返回 null。
-double? getNextQiJd(AstroDateTime target) {
-  return getNextQi(target)?.jd;
-}
+double? getNextQiJd(AstroDateTime target) => getNextQi(target)?.jd;
 
 /// 获取指定阳历年的所有 24 个节气的 Julian Day 数组。
-///
-/// [year] 阳历年（如 2025）。
-/// 返回从该年 1 月 1 日开始的 24 个节气的 J2000 相对儒略日数组。
 List<double> getYearJieQiJd(int year) {
   return getYearJieQi(year).map((jq) => jq.jd).toList();
 }
-

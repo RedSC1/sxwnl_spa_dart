@@ -1,3 +1,11 @@
+## 0.15.0
+
+- **重构 `jie_qi.dart` 检索算法**：
+  - 弃用基于预计算列表的全局搜索，引入 Slot 定位机制。
+  - 相邻节气（Prev/Next）查询复杂度从 O(n) 降低至 O(1)，大幅提升推算效率。
+  - 统一 `JieQiDistance`、`JieDistance` 与 `QiDistance` 的底层数据模型为 `SolarTermSpan`，并保持属性命名的向下兼容。
+  - 增加 `getSpecificJieQi` 接口，支持按年份与节气序号直接反向推算精确时刻。
+
 ## 0.14.0
 
 - **新增 `shuo_wang.dart` 高精度定朔/定气模块**：

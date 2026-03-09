@@ -1,6 +1,5 @@
 import 'dart:math';
 
-import 'package:sxwnl_spa_dart/src/jie_qi.dart';
 import 'package:sxwnl_spa_dart/src/sxwnl/delta_t.dart';
 import 'package:sxwnl_spa_dart/src/sxwnl/solar_lunar_pos.dart';
 
@@ -31,32 +30,3 @@ double soAccurate2(double jd) {
   final w = ((jd + 8) / 29.5306).floor() * 2 * pi;
   return soAccurate(w);
 }
-
-/// ### 获取指定年份的特定节气时刻 (单点查询)
-  ///
-  /// 利用太阳视黄经模型直接推算特定节气，不生成全年历表。
-  ///
-  /// **参数约定：**
-  /// * [year] 公历年份 (如 2026)。
-  /// * [n] 节气序号 (0~23)，以**春分**为 0 起点：
-  ///   - 0=春分, 1=清明 ... 18=冬至 (发生于当年)
-  ///   - 19=小寒, 20=大寒, 21=立春, 22=雨水, 23=惊蛰 (发生于次年 1~3 月)
-  ///
-  /// **跨年物理修正：**
-  /// 天文学轨道周期以 3 月的春分为起点。当查询 1~3 月的节气 (n >= 19) 时，
-  /// 物理模型上属于“上一个天文年”的末尾。内部已作自动偏移处理。
-  double getSpecificJieQi(int year, int n) {
-    int astroYear = year;
-    // 修正 1~3 月节气的天文纪年偏移
-    if (n >= 19) {
-      astroYear -= 1;
-    }
-
-    // 计算累计弧度: 
-    // (astroYear - 2000) * 2 * pi -> 2000年起算的整圈数
-    // n * (pi / 12) -> 当前圈内的局部节气偏移
-    final w = (astroYear - 2000) * 2 * pi + n * (pi / 12);
-
-    // 调用高精度定气，返回 J2000 相对天数 (北京时间)
-    return qiAccurate(w);
-  }
