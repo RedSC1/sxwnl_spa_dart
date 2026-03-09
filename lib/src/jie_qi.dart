@@ -139,9 +139,9 @@ double getSpecificJieQi(int year, int n) {
   }
 
   // 计算累计弧度:
-  // (astroYear - 2000) * 2 * pi -> 2000年起算的整圈数
+  // (astroYear - 1999) * 2 * pi -> 1999年(w=0)起算的整圈数
   // n * (pi / 12) -> 当前圈内的局部节气偏移
-  final w = (astroYear - 2000) * 2 * pi + n * (pi / 12);
+  final w = (astroYear - 1999) * 2 * pi + n * (pi / 12);
 
   // 调用高精度定气，返回 J2000 相对天数 (北京时间)
   return qiAccurate(w);
@@ -251,13 +251,14 @@ JieQiResult _findNext(double targetJD, {bool Function(int)? filter}) {
 /// 返回从上一个冬至到当前冬至的节气列表（共25个节气，符合传统历法计算"岁"的范围）。
 List<JieQiResult> getYearJieQi(int year) {
   final results = <JieQiResult>[];
-  final y = year - 2000;
 
+  // w=0 对应 1999 年春分。
+  // (year - 1999) * 2 * pi 是当前年春分的基准黄经。
   // i = 0 是该年春分
   // i = -6 是上一年的冬至
   // i = 18 是当前年的冬至
   for (var i = -6; i <= 18; i++) {
-    final w = (y + i / 24 + 1) * 2 * pi;
+    final w = (year - 1999) * 2 * pi + i * (pi / 12);
     final jd = qiAccurate(w);
 
     // 春分(i=0)在 jieQiNames 中的索引是 5
