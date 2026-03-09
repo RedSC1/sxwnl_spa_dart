@@ -12,3 +12,4 @@ export 'sxwnl/true_solar_time.dart';
 export 'sxwnl/festivals.dart';
 export 'sxwnl/astro_events.dart';
 export 'extensions/sxwnl_ext.dart';
+export 'shuo_wang.dart';

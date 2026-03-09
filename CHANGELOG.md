@@ -1,3 +1,16 @@
+## 0.14.0
+
+- **新增 `shuo_wang.dart` 高精度定朔/定气模块**：
+  - 引入 `soAccurate` / `soAccurate2`：暴露底层牛顿迭代物理模型，支持**秒级**合朔（农历初一）时刻计算。
+  - 引入 `getSpecificJieQi`：支持按年份与节气序号直接反向推算精确时刻，内置天文年（3月春分起算）与公历年的跨年偏移修正逻辑。
+- **核心算法精度与稳定性重构 (Refactored Core Algorithms)**：
+  - **月相计算升级**：`getMoonPhase` 彻底抛弃离散历表估算，改为调用 `soAccurate` 物理模型，实现真正的连续时间轴匹配，解决了跨天临界点的月相判定误差。
+  - **星座算法优化**：重构 `getConstellation`，采用“10项快速初筛 + 临界点全项校准”的两级架构，消除了 20/21 号交界日期因摄动导致的判定模糊。
+  - **智能节气搜索**：新增 `qiAccurate2` 接口，支持基于儒略日的自动节气对齐与轨道摄动容错补偿。
+- **API 语义化与结构调整**：
+  - 规范了 `AstroDateTime` 的天文纪年描述（包含公元 0 年），并优化了 `toJulianDay` 等基础方法的语义。
+  - `sxwnl_dart_base.dart` 增加 `shuo_wang.dart` 的统一导出。
+
 ## 0.13.0
 
 - **新增历史节气校正功能 (Historical Solar Terms Mapping)**：

@@ -62,27 +62,53 @@ class AstroDateTime implements Comparable<AstroDateTime> {
   /// 绝对儒略日常量 J2000.0 = 2451545.0 (2000-01-01 12:00 TT)
   static const double j2000 = 2451545.0;
 
-  /// 转为绝对儒略日（Absolute Julian Day Number）。
+  /// ### 转为绝对儒略日 (JD)
   ///
-  /// 使用标准 Meeus 算法，正确处理 Julian/Gregorian 历法切换
-  /// （1582-10-15 及之后使用格里历，之前使用儒略历）。
+  /// 基于 Jean Meeus 标准算法，将当前历法时间转换为绝对儒略日。
+  ///
+  /// **历法切换逻辑：**
+  /// * **格里历 (Gregorian)**：1582-10-15 及之后。
+  /// * **儒略历 (Julian)**：1582-10-15 之前。
+  ///
+  /// **注意：**
+  /// 本方法仅执行数学转换，不包含时区或 ΔT 修正。
+  /// 若当前对象表示的是北京时间，则返回的也是北京时间标尺下的 JD。
   double toJulianDay() {
     return _gregorianToJD(year, month, day, hour, minute, second);
   }
 
-  /// 转为 J2000.0 相对儒略日（sxwnl 内部使用的时间表示）。
+  /// ### 转为 J2000.0 相对天数
   ///
-  /// `j2000Relative = absoluteJD - 2451545.0`
+  /// 计算相对于历元 J2000.0 (2000-01-01 12:00:00) 的偏移天数。
+  ///
+  /// **核心用途：**
+  /// 此结果是 sxwnl（如行星摄动、定气定朔）的标准输入格式。
+  ///
+  /// **换算关系：**
+  /// `j2kDays = absoluteJD - 2451545.0`
   double toJ2000() {
     return toJulianDay() - j2000;
   }
 
-  /// 从绝对儒略日构造。
+  /// 从绝对儒略日 (JD) 构造历法时间。
+  ///
+  /// **核心逻辑：**
+  /// * **时区/标尺中立**：不包含时区偏移或ΔT (TT-UT1) 修正。输入是什么标尺（TT/UT1/UTC等），解析出的就是什么标尺。
+  /// * **天文学纪年法**：包含公元 0 年。
+  ///   * `year > 0`：公元纪年（如 2026 = AD 2026）。
+  ///   * `year == 0`：公元前 1 年 (1 BC)。
+  ///   * `year < 0`：公元前 |year| + 1 年（例: -1 = 2 BC）。
+  /// * **UI 注意事项**：展示古代年份时，前端需自行处理 `year <= 0` 的平移逻辑。
   factory AstroDateTime.fromJulianDay(double jd) {
     return _jdToGregorian(jd);
   }
 
-  /// 从 J2000.0 相对儒略日构造。
+  /// 从 J2000.0 相对天数构造历法时间。
+  ///
+  /// **核心逻辑：**
+  /// * **历元基准**：J2000.0 对应绝对儒略日 `2451545.0` (2000-01-01 12:00:00)。
+  /// * **单位限制**：入参 [j2k] 必须是**天数 (Days)**。
+  /// * **避坑指南**：此接口仅接收天数，切勿传入星历公式中常用的儒略世纪数 (T)。
   factory AstroDateTime.fromJ2000(double j2k) {
     return _jdToGregorian(j2k + j2000);
   }
