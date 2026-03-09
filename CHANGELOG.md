@@ -1,3 +1,12 @@
+## 0.15.1
+
+- **修复 `getConstellation` 在节气点附近的判定误差**：
+    - 解决由 `DateTime` 精度舍入导致的“节气前 1 秒”星座识别偏移问题。
+- **暴露 JD 浮点查询接口**：
+    - `jie_qi.dart` 新增 `getPrevJieQiFromJd` 等接口。支持直接使用 `double` 类型的 JD 查询，避免经过 `AstroDateTime` 中转导致的精度丢失。
+- **API 优化**：
+    - `getConstellation` 增加支持 `AstroDateTime` 接口，高精度推算建议使用 `getConstellationFromJd`。
+
 ## 0.15.0
 
 - **重构 `jie_qi.dart` 检索算法**：

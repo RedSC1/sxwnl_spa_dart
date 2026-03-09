@@ -102,35 +102,46 @@ class AstroEvents {
   /// **算法细节：**
   /// * **分级精度**：默认用 n = 10 快速初筛，仅在交界处 ±10 角秒范围内触发 n = -1 全项校准。
   /// * **索引转换**：物理计算中白羊座索引为 0，通过 +3 偏移对齐至以“摩羯”开头的名称数组。
-  static String getConstellation(double jd) {
-    // 采用 O(1) 的节气查表法，避免底层物理引擎的 TT vs UTC 转换死区。
-    // 中气 (索引为奇数: 1, 3, 5... 23) 正好对应十二星座的起点。
-    // 春分(5)=白羊, 谷雨(7)=金牛, 小满(9)=双子 ... 雨水(3)=双鱼
+  /// 根据 [AstroDateTime] 获取星座名称（应用层接口）。
+  ///
+  /// 内部通过 [getPrevJieQi] 查找上一个节气，精度足够满足日常使用。
+  /// 如果需要亚秒级物理精度，请使用 [getConstellationFromJd]。
+  static String getConstellation(AstroDateTime target) {
+    final prevQi = getPrevJieQi(target);
+    if (prevQi == null) return "未知";
+    return _qiToConstellation(prevQi);
+  }
 
-    // 1. 获取目标历年。因为节气表是按太阳年算的，我们往前后多取一年，保证边界绝对覆盖。
-    final target = AstroDateTime.fromJ2000(jd);
-    final y = target.year;
+  /// 根据 J2000 相对儒略日 [jd] 获取星座名称（高精度物理层接口）。
+  ///
+  /// 全程使用 double 精度 JD 比对，不经过 AstroDateTime 转换，
+  /// 在交界点附近也能保证亚秒级精度。
+  static String getConstellationFromJd(double jd) {
+    // 只用 AstroDateTime 获取大致年份，不用于精度比对
+    final y = AstroDateTime.fromJ2000(jd).year;
 
-    // 把去年和今年的 50 个节气全拼在一起，必定包含目标 jd
+    // 拼接去年和今年的节气，保证边界覆盖
     final allQi = <JieQiResult>[];
     allQi.addAll(getYearJieQi(y - 1));
     allQi.addAll(getYearJieQi(y));
 
-    // 2. 找到最后一个 exact jd <= 当前 jd 的节气
+    // 用原始 double jd 直接比大小，零精度损失
     JieQiResult? prevQi;
     for (int i = 0; i < allQi.length; i++) {
       if (jd >= allQi[i].jd) {
         prevQi = allQi[i];
       } else {
-        // 遇到了第一个明显大于 jd 的节气，前面的就是最近的上一个
         break;
       }
     }
 
-    // 安全降级拦截 (理论上必不可能触发，除非传入远古年代)
     if (prevQi == null) return "未知";
+    return _qiToConstellation(prevQi);
+  }
 
-    // 3. 将节气映射到星座
+  /// 内部工具：将节气结果映射到星座名称。
+  static String _qiToConstellation(JieQiResult prevQi) {
+    // 如果上一个交点是 "节"（偶数索引），星座由再上一个 "气" 决定
     final targetQiIndex = prevQi.index % 2 == 0
         ? (prevQi.index - 1)
         : prevQi.index;

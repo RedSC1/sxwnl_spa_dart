@@ -276,7 +276,6 @@ List<DayInfo> getDayRange(
 
   for (int i = 0; i < totalDays; i++) {
     final date = startDate.add(Duration(days: i));
-    final currentJD = date.toJ2000();
 
     final lunar = LunarDate.fromSolar(date);
     final gz = dayGanZhi(date);
@@ -309,7 +308,7 @@ List<DayInfo> getDayRange(
     }
 
     final mp = AstroEvents.getMoonPhase(date);
-    final constellation = AstroEvents.getConstellation(currentJD);
+    final constellation = AstroEvents.getConstellation(date);
 
     // 调用全新的 5 级节日系统 (包含三伏、数九)
     final ftvs = FestivalEngine.getFestivals(date, lunar, gz);
