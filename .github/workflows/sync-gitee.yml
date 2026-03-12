@@ -1,0 +1,32 @@
+name: 🚀 自动镜像到 Gitee
+
+# 触发条件：当你往 main 或 master 分支 push 代码时，机器人苏醒
+on:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  sync_to_gitee:
+    runs-on: ubuntu-latest 
+    steps:
+      - name: 📦 拉取最新代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 
+          persist-credentials: false
+
+      - name: 🥷 强行同步到 Gitee
+        run: |
+
+          GITEE_USER="RedSC1"
+          REPO_NAME="sxwnl_spa_dart" 
+          
+          # 拼接带 Token 的暗号 URL
+          REMOTE_URL="https://${GITEE_USER}:${{ secrets.GITEE_TOKEN }}@gitee.com/${GITEE_USER}/${REPO_NAME}.git"
+          
+          # 告诉机器人 Gitee 的地址
+          git remote add gitee "${REMOTE_URL}"
+          
+          # 暴力推送所有分支和标签
+          git push gitee --all --force
+          git push gitee --tags --force
