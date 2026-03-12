@@ -16,6 +16,8 @@ jobs:
           persist-credentials: false
 
       - name: 🥷 强行同步到 Gitee
+        env:
+          GIT_TERMINAL_PROMPT: 0
         run: |
 
           GITEE_USER="RedSC1"
