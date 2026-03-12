@@ -20,3 +20,4 @@ jobs:
           force_update: true         # 强制覆盖 Gitee
           debug: true                # 开启日志方便咱们查错
           timeout: '600s'            # 防止卡死，十分钟超时
+          static_list: "sxwnl_spa_dart"
