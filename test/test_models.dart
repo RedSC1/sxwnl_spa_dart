@@ -168,7 +168,8 @@ void main() {
       expect(tp.clockTime, time);
       expect(tp.timezone, 8.0);
       expect(tp.location, defaultLoc);
-      expect(tp.splitRatHour, false);
+      expect(tp.ratHourMode, RatHourMode.noSplit);
+      expect(tp.splitByRatHour, false); // 验证兼容性 getter
       expect(tp.solarTime, isNotNull);
       expect(tp.virtualTime, isNotNull);
       expect(tp.utcTime, isNotNull);

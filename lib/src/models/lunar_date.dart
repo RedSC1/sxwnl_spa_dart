@@ -1,4 +1,5 @@
 import '../astro_date_time.dart';
+import '../enums/rat_hour_mode.dart';
 import '../sxwnl/ssq.dart';
 
 class LunarDate {
@@ -106,10 +107,10 @@ class LunarDate {
 
   static LunarDate fromSolar(
     AstroDateTime solarTime, {
-    bool splitRatHour = false,
+    RatHourMode ratHourMode = RatHourMode.noSplit,
   }) {
     var solar = solarTime;
-    if (!splitRatHour && solarTime.hour >= 23) {
+    if (ratHourMode == RatHourMode.noSplit && solarTime.hour >= 23) {
       solar = solarTime.add(Duration(hours: 1));
     }
 

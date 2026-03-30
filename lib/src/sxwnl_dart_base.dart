@@ -1,4 +1,5 @@
 export 'astro_date_time.dart';
+export 'enums/rat_hour_mode.dart';
 export 'jie_qi.dart';
 export 'location.dart';
 export 'models/gan_zhi.dart';

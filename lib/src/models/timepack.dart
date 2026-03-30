@@ -1,5 +1,7 @@
 import 'package:sxwnl_spa_dart/sxwnl_spa_dart.dart';
 
+import '../enums/rat_hour_mode.dart';
+
 /// 时间封装包 (TimePack)
 ///
 /// 核心职责：
@@ -35,11 +37,14 @@ class TimePack {
   /// 用户所在地理位置 (经纬度)。
   final Location location;
 
-  /// 配置：是否区分早晚子时。
-  /// - true: 23:00-00:00 算当天的晚子时。
-  /// - false: 23:00-00:00 算明天的早子时。
-  /// 该字段仅作存储，具体逻辑下放给 calcGanZhi 函数。
-  final bool splitRatHour;
+  /// 配置：早晚子时处理模式。
+  /// - noSplit: 23:00 直接换日（传统早子时）
+  /// - todayGan: 区分早晚子，晚子时日柱今天，时干按今天遁
+  /// - tomorrowGan: 区分早晚子，晚子时日柱今天，时干按明天遁
+  final RatHourMode ratHourMode;
+
+  /// 兼容性字段：是否开启子时拆分
+  bool get splitByRatHour => ratHourMode != RatHourMode.noSplit;
 
   TimePack({
     required this.clockTime,
@@ -48,7 +53,7 @@ class TimePack {
     required this.utcTime,
     required this.timezone,
     required this.location,
-    required this.splitRatHour,
+    required this.ratHourMode,
   });
 
   /// 用户创建入口
@@ -56,7 +61,7 @@ class TimePack {
     required AstroDateTime clockTime,
     double timezone = 8.0,
     Location location = defaultLoc,
-    bool splitByRatHour = false, // 默认不分(即23点换日)，可配置
+    RatHourMode ratHourMode = RatHourMode.noSplit, // 默认不分(即23点换日)
     bool useTrueSolarTime = true, // 默认使用真太阳时
   }) {
     // 1. 无论用不用，先算出真太阳时备着 (Data Calculation)
@@ -94,7 +99,7 @@ class TimePack {
       utcTime: utcTime,
       timezone: timezone,
       location: location,
-      splitRatHour: splitByRatHour, // 将配置透传
+      ratHourMode: ratHourMode, // 将配置透传
     );
   }
 
