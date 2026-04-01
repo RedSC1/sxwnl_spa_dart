@@ -1,9 +1,9 @@
 // test_jie_qi_direct.dart
 // 专门测试直接调用暴露的 qiAccurate 函数（原 _qiAccurate）
 import 'dart:math';
-import '../lib/src/jie_qi.dart';
-import '../lib/src/astro_date_time.dart';
-import '../lib/src/sxwnl/ssq.dart';
+import 'package:sxwnl_spa_dart/src/jie_qi.dart';
+import 'package:sxwnl_spa_dart/src/astro_date_time.dart';
+import 'package:sxwnl_spa_dart/src/sxwnl/ssq.dart';
 // Add this import
 
 void main() {

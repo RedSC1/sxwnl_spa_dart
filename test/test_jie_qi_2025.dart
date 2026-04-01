@@ -7,8 +7,8 @@
 // 修正后的测试脚本，将被放置在 E:\ziwei_core_v2\sxwnl_dart\test 目录下运行
 // 这样可以使用相对路径引用
 
-import '../lib/src/jie_qi.dart';
-import '../lib/src/astro_date_time.dart';
+import 'package:sxwnl_spa_dart/src/jie_qi.dart';
+import 'package:sxwnl_spa_dart/src/astro_date_time.dart';
 
 void main() {
   int year = 2025;

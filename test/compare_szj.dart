@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
-import '../lib/src/astro_date_time.dart';
-import '../lib/src/sxwnl/szj.dart';
+import 'package:sxwnl_spa_dart/src/astro_date_time.dart';
+import 'package:sxwnl_spa_dart/src/sxwnl/szj.dart';
 
 List<List<double>> _collectYearSzjSeconds(
   int year,

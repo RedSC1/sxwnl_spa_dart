@@ -1,7 +1,13 @@
 name: sxwnl_spa_dart
 description: Chinese calendar library with lunar, solar terms, gan-zhi and true solar time (sxwnl + SPA).
-version: 0.15.1
+version: 0.16.0
 repository: https://github.com/RedSC1/sxwnl_spa_dart
+issue_tracker: https://github.com/RedSC1/sxwnl_spa_dart/issues
+topics:
+  - calendar
+  - chinese-calendar
+  - lunar
+  - astronomy
 
 environment:
   sdk: ^3.10.8

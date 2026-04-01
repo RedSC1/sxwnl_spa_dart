@@ -1,8 +1,8 @@
 import 'package:test/test.dart';
-import '../lib/src/sxwnl/szj.dart';
-import '../lib/src/location.dart';
-import '../lib/src/astro_date_time.dart';
-import '../lib/src/sxwnl/true_solar_time.dart';
+import 'package:sxwnl_spa_dart/src/sxwnl/szj.dart';
+import 'package:sxwnl_spa_dart/src/location.dart';
+import 'package:sxwnl_spa_dart/src/astro_date_time.dart';
+import 'package:sxwnl_spa_dart/src/sxwnl/true_solar_time.dart';
 
 void main() {
   group('SZJ Math Verification', () {

@@ -1,3 +1,12 @@
+## 0.16.0
+
+- **生产环境对齐与 OpenDestiny 集成优化**：
+    - 针对 `opendestiny-flutter` 桌面端的展示需求，进一步优化了核心模型 `DayInfo` 的属性暴露与稳定性。
+    - 提升了极端年份（BC/AC）在日历计算中的边界鲁棒性。
+- **文档与工程化更新**：
+    - 完善 `pubspec.yaml` 元数据（新增 topics, issue_tracker）。
+    - 更新 `README.md` 中的安装示例与参考实现链接。
+
 ## 0.15.1
 
 - **修复 `getConstellation` 在节气点附近的判定误差**：

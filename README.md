@@ -24,7 +24,7 @@
 
 ```yaml
 dependencies:
-  sxwnl_spa_dart: ^0.15.1
+  sxwnl_spa_dart: ^0.16.0
 ```
 
 ## 🚀 快速上手
@@ -326,7 +326,7 @@ Chinese calendar & astronomical calculations library based on sxwnl + SPA.
 
 ```yaml
 dependencies:
-  sxwnl_spa_dart: ^0.15.1
+  sxwnl_spa_dart: ^0.16.0
 ```
 
 ### Quick Start
@@ -352,6 +352,14 @@ See the Chinese examples above: 真太阳时 / 农历排盘 / 干支计算.
 | Solar noon* | lon 116.3833, lat 39.9, tz 8.0 | 0.804249 | 18.000000 | 1032940 | 1494625 | 29515 |
 | Sunrise* | lon 116.3833, lat 39.9, tz 8.0 | 57.273736 | 191.000000 | 6747 | 40550 | 2509783 |
 | Sunset* | lon 116.3833, lat 39.9, tz 8.0 | 0.876318 | 62.000000 | 953666 | 1564709 | 38705 |
+
+---
+
+### 🎨 推荐实现 (Reference Implementation)
+
+本项目为核心算法库。如需查看基于本库构建的专业紫微斗数/八字排盘 UI 实现，请参考：
+
+*   **[OpenDestiny](https://github.com/RedSC1/opendestiny-flutter)** - 开源易学排盘工具（Flutter 桌面版/全平台）。
 
 ## 📚 感谢
 
