@@ -10,4 +10,5 @@ pubspec.lock
 test/*.json
 
 
-sxwnl/
+build/
+.pubignore
