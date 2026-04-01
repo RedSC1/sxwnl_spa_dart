@@ -1,0 +1,17 @@
+# .pubignore - Files to exclude when publishing to pub.dev
+# --------------------------------------------------------
+
+# Dev tools
+.claude/
+.dart_tool/
+.vscode/
+
+# Build artifacts
+build/
+*.cache.dill
+*.cache.dill.track.dill
+
+# Temporary files
+fix_imports.dart
+*.log
+.DS_Store
