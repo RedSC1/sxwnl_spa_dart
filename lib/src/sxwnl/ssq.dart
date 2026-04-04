@@ -319,7 +319,7 @@ class SSQ {
   ///
   /// [jd] 应靠近所要取得的气朔日。
   /// [type] 0=朔, 1=气。
-  double calc(double jd, int type) {
+  double calc(double jd, int type, {bool enableHistoricalRules = true}) {
     jd += 2451545; // 转为绝对儒略日
     double dRes;
     String n = "";
@@ -335,8 +335,8 @@ class SSQ {
     final f2 = b[b.length - 1] - pc;
     final f3 = 2436935.0; // 1960.1.1
 
-    // 1. 现代/远古天文算法 (表外数据)
-    if (jd < f1 || jd >= f3) {
+    // 1. 现代/远古天文算法 (若不启用历史规则，则始终走此分支)
+    if (!enableHistoricalRules || jd < f1 || jd >= f3) {
       if (type == 1) {
         // 定气
         // 2451259 = 1999.3.21 春分
@@ -425,23 +425,23 @@ class SSQ {
     // 355 = 2000.12 冬至 (J2000相对值)
     // 估算最近的冬至
     var w = int2((jd - 355 + 183) / 365.2422) * 365.2422 + 355;
-    if (calc(w, 1) > jd) w -= 365.2422;
+    if (calc(w, 1, enableHistoricalRules: enableHistoricalRules) > jd) w -= 365.2422;
 
     // 2. 计算 25 个节气 (从冬至开始)
     for (var i = 0; i < 25; i++) {
       final jdZq = w + 15.2184 * i;
-      zq[i] = calc(jdZq, 1);
+      zq[i] = calc(jdZq, 1, enableHistoricalRules: enableHistoricalRules);
     }
 
     // 3. 计算“首朔”
     // 求较靠近冬至的朔日
-    var wSho = calc(zq[0], 0);
+    var wSho = calc(zq[0], 0, enableHistoricalRules: enableHistoricalRules);
     if (wSho > zq[0]) wSho -= 29.53;
 
     // 4. 计算该年所有朔 (15个)
     for (var i = 0; i < 15; i++) {
       final jdHs = wSho + 29.5306 * i;
-      hs[i] = calc(jdHs, 0);
+      hs[i] = calc(jdHs, 0, enableHistoricalRules: enableHistoricalRules);
     }
 
     // 5. 计算月大小
