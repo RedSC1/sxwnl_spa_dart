@@ -3,6 +3,10 @@ import '../enums/rat_hour_mode.dart';
 import '../sxwnl/ssq.dart';
 
 class LunarDate {
+  /// 农历年份（天文纪年，Astronomical Year Numbering）
+  /// - year > 0: 公元纪年（如 2026 = AD 2026）
+  /// - year == 0: 公元前1年 (1 BC)
+  /// - year < 0: 公元前 |year| + 1 年（如 -1 = 2 BC）
   final int lunarYear;
   final int month;
   final int day;
@@ -177,14 +181,17 @@ class LunarDate {
     }
 
     // 农历年：以正月初一为界
+    // 🌟 使用天文纪年（Astronomical Year Numbering），有公元0年
+    // 历史公元前1年 = 天文年0，历史公元前2年 = 天文年-1，以此类推
     int lunarYear;
     if (zhengYueIndex >= 0) {
-      // 正月初一所在的阳历年
+      // 正月初一所在的阳历年（已经是天文纪年）
       final zhengYue1st = AstroDateTime.fromJ2000(result.hs[zhengYueIndex]);
       final zhengYueYear = zhengYue1st.year;
 
       if (arrayIndex < zhengYueIndex) {
         // 在正月初一之前，农历年 = 正月初一阳历年 - 1
+        // 天文纪年直接减1，不需要历史年份转换
         lunarYear = zhengYueYear - 1;
       } else {
         // 在正月初一之后，农历年 = 正月初一阳历年
