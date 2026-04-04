@@ -24,7 +24,7 @@
 
 ```yaml
 dependencies:
-  sxwnl_spa_dart: ^0.17.0
+  sxwnl_spa_dart: ^0.18.0
 ```
 
 ## 🚀 快速上手
@@ -326,7 +326,7 @@ Chinese calendar & astronomical calculations library based on sxwnl + SPA.
 
 ```yaml
 dependencies:
-  sxwnl_spa_dart: ^0.17.0
+  sxwnl_spa_dart: ^0.18.0
 ```
 
 ### Quick Start

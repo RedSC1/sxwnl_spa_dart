@@ -1,3 +1,14 @@
+## 0.18.0
+
+- **Breaking Change: 统一使用天文纪年（Astronomical Year Numbering）**:
+  - `LunarDate.lunarYear` 现在统一存储天文年份（有公元0年），与 `AstroDateTime.year` 保持一致。
+  - 历史年份与天文年份的对应关系：
+    - 历史公元前1年 = 天文年 0
+    - 历史公元前2年 = 天文年 -1
+    - 公元后年份两者相同
+  - 这修复了公元前日期干支计算错误的问题（如公元前457年应得甲申而非癸未）。
+  - 使用 `fromSolar()` 创建农历时，传入的 `AstroDateTime` 已使用天文纪年，无需额外转换。
+
 ## 0.17.0
 
 - **SSQ 引擎优化与历史规则解耦**：
