@@ -1,3 +1,12 @@
+## 0.18.1
+
+- **重大修复：纠正 `LunarDate` 的天文纪年实现不完整问题**
+  - 修复 `LunarDate.fromSolar()` 在公元前日期上仍返回偏历史纪年的问题；`LunarDate.lunarYear` 现在真正与 `AstroDateTime.year` 对齐，统一使用天文纪年（含公元 0 年）。
+  - 修复 `LunarDate.toSolar()` / `LunarDate.fromString()` 在 BCE 与跨正月场景下的年份匹配逻辑，避免出现年号偏移或回转失败。
+  - 修复 `getLunarMonthDays()` 对跨年重复月名（如 `十一`）的错误匹配问题，并在请求不存在的月份时明确抛出 `FormatException`。
+  - 新增 `LunarDate.isBCE`、`LunarDate.bceYear`、`LunarDate.historicalYear`，便于在保持内部天文纪年的同时向 UI 或传统历法逻辑暴露历史纪年。
+  - 补充 BCE 与跨年农历月份测试，覆盖 `solar -> lunar -> solar` 往返、公元前显示与 `十一/十二` 月份边界。
+
 ## 0.18.0
 
 - **Breaking Change: 统一使用天文纪年（Astronomical Year Numbering）**:

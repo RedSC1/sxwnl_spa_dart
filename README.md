@@ -24,8 +24,11 @@
 
 ```yaml
 dependencies:
-  sxwnl_spa_dart: ^0.18.0
+  sxwnl_spa_dart: ^0.18.1
 ```
+
+> `0.18.1` 起，`LunarDate.lunarYear` 对外语义真正统一为天文纪年（含公元 0 年）。
+> 如需传统显示或历史纪年，可使用 `LunarDate.historicalYear` / `LunarDate.bceYear` / `LunarDate.isBCE`。
 
 ## 🚀 快速上手
 
@@ -326,7 +329,7 @@ Chinese calendar & astronomical calculations library based on sxwnl + SPA.
 
 ```yaml
 dependencies:
-  sxwnl_spa_dart: ^0.18.0
+  sxwnl_spa_dart: ^0.18.1
 ```
 
 ### Quick Start

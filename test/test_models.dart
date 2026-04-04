@@ -158,6 +158,14 @@ void main() {
       expect(lunar.toString(), contains('正'));
       expect(lunar.toString(), contains('十五'));
     });
+
+    test('historical year helpers for BCE date', () {
+      final lunar = LunarDate.fromSolar(AstroDateTime(-456, 4, 4, 12, 0, 0));
+      expect(lunar.lunarYear, -456);
+      expect(lunar.isBCE, true);
+      expect(lunar.bceYear, 457);
+      expect(lunar.historicalYear, 457);
+    });
   });
 
   group('TimePack', () {

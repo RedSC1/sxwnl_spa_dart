@@ -108,8 +108,9 @@ class DayInfo {
 
   @override
   String toString() {
+    final solarDateStr = solarDate.toString().split(' ')[0];
     String s =
-        '${solarDate.year}-${_pad(solarDate.month)}-${_pad(solarDate.day)} ';
+        '$solarDateStr ';
     s += '$ganZhi 周$weekdayName $constellation ';
     s += '农历$lunarDate(${lunarMonthSize == 30 ? "大" : "小"})';
 
@@ -383,15 +384,9 @@ List<DayInfo> getLunarMonthDays(
   SolarCalcMethod solarMethod = SolarCalcMethod.spa,
   bool useHistoricalSolarTerms = false,
 }) {
-  final startSolar = LunarDate.fromString(lunarYear, monthName, 1).toSolar;
-  final result = SSQ().calcY(AstroDateTime(lunarYear, 6, 1).toJ2000());
-  int daysInMonth = 30;
-  for (int i = 0; i < result.ym.length; i++) {
-    if (_matchLunarMonth(result, i, monthName)) {
-      daysInMonth = result.dx[i];
-      break;
-    }
-  }
+  final lunarMonth = LunarDate.fromString(lunarYear, monthName, 1);
+  final startSolar = lunarMonth.toSolar;
+  final daysInMonth = lunarMonth.monthSize;
   return getDayRange(
     AstroDateTime(startSolar.year, startSolar.month, startSolar.day),
     startSolar.add(Duration(days: daysInMonth - 1)),
@@ -399,16 +394,6 @@ List<DayInfo> getLunarMonthDays(
     solarMethod: solarMethod,
     useHistoricalSolarTerms: useHistoricalSolarTerms,
   );
-}
-
-bool _matchLunarMonth(dynamic result, int index, String targetName) {
-  final rawName = result.ym[index];
-  final isLeapIdx = (result.leap > 0 && index == result.leap);
-  if (rawName == targetName) return true;
-  if (targetName.startsWith("闰")) {
-    return rawName == targetName.replaceAll("闰", "") && isLeapIdx;
-  }
-  return rawName == targetName && !isLeapIdx;
 }
 
 List<DayInfo> getJieQiPeriodDays(

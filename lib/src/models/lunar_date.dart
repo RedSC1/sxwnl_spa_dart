@@ -64,6 +64,7 @@ class LunarDate {
 
     final ssq = SSQ();
     final result = ssq.calcY(AstroDateTime(year, 6, 1).toJ2000());
+    final zhengYueIndex = result.ym.indexOf("正");
     bool found = false;
     int monthSize = 30;
     for (int i = 0; i < result.ym.length; i++) {
@@ -86,6 +87,18 @@ class LunarDate {
       }
 
       if (currentMonth == logicalMonth && currentIsLeap == isLeapMonth) {
+        if (zhengYueIndex >= 0) {
+          final expectedLunarYear = _astronomicalLunarYearForIndex(
+            result,
+            i,
+            zhengYueIndex,
+          );
+
+          if (expectedLunarYear != year) {
+            continue;
+          }
+        }
+
         found = true;
         monthSize = result.dx[i];
         if (day < 1 || day > monthSize) {
@@ -185,18 +198,7 @@ class LunarDate {
     // 历史公元前1年 = 天文年0，历史公元前2年 = 天文年-1，以此类推
     int lunarYear;
     if (zhengYueIndex >= 0) {
-      // 正月初一所在的阳历年（已经是天文纪年）
-      final zhengYue1st = AstroDateTime.fromJ2000(result.hs[zhengYueIndex]);
-      final zhengYueYear = zhengYue1st.year;
-
-      if (arrayIndex < zhengYueIndex) {
-        // 在正月初一之前，农历年 = 正月初一阳历年 - 1
-        // 天文纪年直接减1，不需要历史年份转换
-        lunarYear = zhengYueYear - 1;
-      } else {
-        // 在正月初一之后，农历年 = 正月初一阳历年
-        lunarYear = zhengYueYear;
-      }
+      lunarYear = _astronomicalLunarYearForIndex(result, arrayIndex, zhengYueIndex);
     } else {
       // 找不到正月（不应该发生），用阳历年兜底
       lunarYear = solar.year;
@@ -245,17 +247,11 @@ class LunarDate {
           // 验证农历年是否匹配
           final zhengYueIndex = result.ym.indexOf("正");
           if (zhengYueIndex >= 0) {
-            final zhengYue1st = AstroDateTime.fromJ2000(
-              result.hs[zhengYueIndex],
+            final expectedLunarYear = _astronomicalLunarYearForIndex(
+              result,
+              i,
+              zhengYueIndex,
             );
-            final zhengYueYear = zhengYue1st.year;
-
-            int expectedLunarYear;
-            if (i < zhengYueIndex) {
-              expectedLunarYear = zhengYueYear - 1;
-            } else {
-              expectedLunarYear = zhengYueYear;
-            }
 
             if (expectedLunarYear != lunarYear) {
               continue;
@@ -276,8 +272,42 @@ class LunarDate {
   /// 是否是本月最后一天 (除夕判断用)
   bool get isLastDay => day == monthSize;
 
+  /// 是否公元前
+  bool get isBCE => lunarYear <= 0;
+
+  /// 公元前年份（公元前1年 -> 1，公元前2年 -> 2）。
+  /// 公元后返回 null。
+  int? get bceYear => isBCE ? 1 - lunarYear : null;
+
+  /// 历史纪年年份（无公元0年）。
+  /// 公元前返回正整数的 BCE 年号，公元后直接返回原值。
+  int get historicalYear => isBCE ? 1 - lunarYear : lunarYear;
+
   @override
-  String toString() => "$lunarYear年$monthNameStr月$dayName";
+  String toString() {
+    // 天文纪年转历史纪年显示（与 AstroDateTime.toString() 保持一致）
+    final yearDisplay = isBCE ? '公元前$historicalYear' : '$historicalYear';
+    return "$yearDisplay年$monthNameStr月$dayName";
+  }
+
+  static int _astronomicalLunarYearForIndex(
+    dynamic result,
+    int monthIndex,
+    int zhengYueIndex,
+  ) {
+    final zhengYue1st = AstroDateTime.fromJ2000(result.hs[zhengYueIndex]);
+    final historicalYear = monthIndex < zhengYueIndex
+        ? zhengYue1st.year - 1
+        : zhengYue1st.year;
+    return _historicalToAstronomicalYear(historicalYear);
+  }
+
+  // SSQ 的历史年份分支在 BCE 段仍按“无 0 年”口径判年。
+  // LunarDate 对外统一暴露天文纪年，因此在 API 边界做一次归一化：
+  // 历史公元前 1 年 -> 天文年 0，历史公元前 2 年 -> 天文年 -1。
+  static int _historicalToAstronomicalYear(int year) {
+    return year <= 0 ? year + 1 : year;
+  }
 
   static int _cnToInt(String cn) {
     const map = {
