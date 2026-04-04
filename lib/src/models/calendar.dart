@@ -131,7 +131,6 @@ class DayInfo {
     return s;
   }
 
-  static String _pad(int n) => n.toString().padLeft(2, '0');
   static const _weekdayLabel = ['一', '二', '三', '四', '五', '六', '日'];
 }
 
