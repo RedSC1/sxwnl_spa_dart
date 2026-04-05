@@ -1,3 +1,10 @@
+## 0.18.3
+
+- **修复 `LunarDate.fromString()` 在 BCE 年内前段月份的归年错误**
+  - 修复 `LunarDate.fromString(-100, '十', 1)` 这类 BCE 输入仍会错误抛出 `FormatException` 的问题。
+  - 修正 `LunarDate._astronomicalLunarYearForIndex()` 在 BCE 场景下对“正月前月份”的归年判定，避免把 `十一/十二` 所在年表中的 `正月前月份` 误归到下一天文年。
+  - 补充 BCE `十月` 回归测试，覆盖 `fromString()` 与 `toSolar()/fromSolar()` 的一致性。
+
 ## 0.18.2
 
 - **修复 `LunarDate.fromString()` 在 BCE 正月附近的归年错误**

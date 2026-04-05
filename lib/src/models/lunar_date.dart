@@ -311,11 +311,12 @@ class LunarDate {
       return _historicalToAstronomicalYear(historicalYear);
     }
 
-    // BCE 段 AstroDateTime.year 已是天文纪年。
-    // 为了保证 LunarDate.lunarYear 与 AstroDateTime.year 语义一致，
-    // 同一份 SSQ 年表中的月份统一归属到该正月所在的天文年，
-    // 否则会把 BCE 的正月~十月错误判到下一天文年，导致 fromString 找不到。
-    return zhengYue1st.year;
+    // BCE 段 AstroDateTime.year 已是天文纪年，不能再套一次“历史年 -> 天文年”转换。
+    // 规则仍然是“正月前属于上一农历年，正月及之后属于当前农历年”，
+    // 只是这里直接在天文纪年上做 +/- 1。
+    return monthIndex < zhengYueIndex
+        ? zhengYue1st.year - 1
+        : zhengYue1st.year;
   }
 
   // SSQ 的历史年份分支在 BCE 段仍按“无 0 年”口径判年。

@@ -46,6 +46,19 @@ void main() {
       expect(back.isLeap, false);
     });
 
+    test('fromString resolves BCE month 十 within the requested lunar year', () {
+      final lunar = LunarDate.fromString(-100, '十', 1);
+      final solar = lunar.toSolar;
+      final back = LunarDate.fromSolar(
+        AstroDateTime(solar.year, solar.month, solar.day, 12, 0, 0),
+      );
+
+      expect(back.lunarYear, -100);
+      expect(back.month, 10);
+      expect(back.day, 1);
+      expect(back.isLeap, false);
+    });
+
     test('fromString resolves month 十一 within the requested lunar year', () {
       final lunar = LunarDate.fromString(2025, '十一', 1);
       final solar = lunar.toSolar;
