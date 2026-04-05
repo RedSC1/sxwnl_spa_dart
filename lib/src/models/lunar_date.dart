@@ -1,5 +1,6 @@
 import '../astro_date_time.dart';
 import '../enums/rat_hour_mode.dart';
+import '../sxwnl/math_utils.dart';
 import '../sxwnl/ssq.dart';
 
 class LunarDate {
@@ -301,29 +302,69 @@ class LunarDate {
     int monthIndex,
     int zhengYueIndex,
   ) {
-    final zhengYue1st = AstroDateTime.fromJ2000(result.hs[zhengYueIndex]);
-
-    // CE 段按常规“正月前属于上一年，正月后属于当年”处理。
-    if (zhengYue1st.year > 0) {
-      final historicalYear = monthIndex < zhengYueIndex
-          ? zhengYue1st.year - 1
-          : zhengYue1st.year;
-      return _historicalToAstronomicalYear(historicalYear);
+    if (_usesAncientHistoricalYearBoundary(result)) {
+      return _ancientHistoricalLunarYearForIndex(result, monthIndex);
     }
 
-    // BCE 段 AstroDateTime.year 已是天文纪年，不能再套一次“历史年 -> 天文年”转换。
-    // 规则仍然是“正月前属于上一农历年，正月及之后属于当前农历年”，
-    // 只是这里直接在天文纪年上做 +/- 1。
-    return monthIndex < zhengYueIndex
-        ? zhengYue1st.year - 1
-        : zhengYue1st.year;
+    final currentYear = _regularLunarYearFromMidpoint(result, zhengYueIndex);
+    return monthIndex < zhengYueIndex ? currentYear - 1 : currentYear;
   }
 
-  // SSQ 的历史年份分支在 BCE 段仍按“无 0 年”口径判年。
-  // LunarDate 对外统一暴露天文纪年，因此在 API 边界做一次归一化：
-  // 历史公元前 1 年 -> 天文年 0，历史公元前 2 年 -> 天文年 -1。
-  static int _historicalToAstronomicalYear(int year) {
-    return year <= 0 ? year + 1 : year;
+  // 春秋/战国/秦汉这段历史历法并不是“正月建年”。
+  // SSQ.calcY() 在该区间会直接按历史月建排出整年月份序列，
+  // 序列的第一个月名就是该历史年的年首，不能再套“以正月分年”。
+  static bool _usesAncientHistoricalYearBoundary(dynamic result) {
+    final yy = int2((result.zq[0] + 10 + 180) / 365.2422) + 2000;
+    return yy >= -721 && yy <= -104;
+  }
+
+  static int _ancientHistoricalLunarYearForIndex(
+    dynamic result,
+    int monthIndex,
+  ) {
+    final nextYearStartIndex = _findAncientHistoricalNextYearStartIndex(result);
+    final baseYear = _ancientHistoricalBaseYear(result, nextYearStartIndex);
+    return monthIndex < nextYearStartIndex ? baseYear : baseYear + 1;
+  }
+
+  static int _findAncientHistoricalNextYearStartIndex(dynamic result) {
+    if (result.ym.isEmpty) return 0;
+    final firstMonthName = result.ym.first;
+    for (int i = 1; i < result.ym.length; i++) {
+      if (result.ym[i] == firstMonthName) {
+        return i;
+      }
+    }
+    return result.ym.length;
+  }
+
+  static int _ancientHistoricalBaseYear(dynamic result, int nextYearStartIndex) {
+    final startJd = result.hs.first;
+    final endIndex = nextYearStartIndex < result.hs.length
+        ? nextYearStartIndex
+        : result.hs.length - 1;
+    final endJd = result.hs[endIndex];
+    final mid = (startJd + endJd) / 2;
+    return AstroDateTime.fromJ2000(mid).year;
+  }
+
+  // 对普通历法与公元后改历窗口，年界仍然由“显示为正月的那个月”决定，
+  // 但年号不能直接取正月初一当天的公历年。
+  // 像武则天改历这类窗口，年首可能落在前一公历年末，因此改用“年内中点”定年。
+  static int _regularLunarYearFromMidpoint(dynamic result, int zhengYueIndex) {
+    final startJd = result.hs[zhengYueIndex];
+    final endJd = _findNextDisplayedZhengStart(result, zhengYueIndex) ?? (startJd + 180);
+    final mid = (startJd + endJd) / 2;
+    return AstroDateTime.fromJ2000(mid).year;
+  }
+
+  static double? _findNextDisplayedZhengStart(dynamic result, int zhengYueIndex) {
+    for (int i = zhengYueIndex + 1; i < result.ym.length; i++) {
+      if (result.ym[i] == '正') {
+        return result.hs[i];
+      }
+    }
+    return null;
   }
 
   static int _cnToInt(String cn) {
