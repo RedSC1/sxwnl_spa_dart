@@ -63,48 +63,54 @@ class LunarDate {
     }
 
     final ssq = SSQ();
-    final result = ssq.calcY(AstroDateTime(year, 6, 1).toJ2000());
-    final zhengYueIndex = result.ym.indexOf("正");
     bool found = false;
     int monthSize = 30;
-    for (int i = 0; i < result.ym.length; i++) {
-      final rawName = result.ym[i];
-      int currentMonth;
-      bool currentIsLeap;
 
-      if (rawName == "十三") {
-        currentMonth = 13;
-        currentIsLeap = true;
-      } else if (rawName == "后九") {
-        currentMonth = 9;
-        currentIsLeap = true;
-      } else if (rawName == "拾贰") {
-        currentMonth = 12;
-        currentIsLeap = false;
-      } else {
-        currentMonth = _cnToInt(rawName);
-        currentIsLeap = (result.leap > 0 && i == result.leap);
-      }
+    // 和 toSolar 一样，跨正月月份需要在两年的冬至年窗口里搜索。
+    for (int offset = 0; offset <= 1 && !found; offset++) {
+      final searchYear = year + offset;
+      final result = ssq.calcY(AstroDateTime(searchYear, 6, 1).toJ2000());
+      final zhengYueIndex = result.ym.indexOf("正");
 
-      if (currentMonth == logicalMonth && currentIsLeap == isLeapMonth) {
-        if (zhengYueIndex >= 0) {
-          final expectedLunarYear = _astronomicalLunarYearForIndex(
-            result,
-            i,
-            zhengYueIndex,
-          );
+      for (int i = 0; i < result.ym.length; i++) {
+        final rawName = result.ym[i];
+        int currentMonth;
+        bool currentIsLeap;
 
-          if (expectedLunarYear != year) {
-            continue;
+        if (rawName == "十三") {
+          currentMonth = 13;
+          currentIsLeap = true;
+        } else if (rawName == "后九") {
+          currentMonth = 9;
+          currentIsLeap = true;
+        } else if (rawName == "拾贰") {
+          currentMonth = 12;
+          currentIsLeap = false;
+        } else {
+          currentMonth = _cnToInt(rawName);
+          currentIsLeap = (result.leap > 0 && i == result.leap);
+        }
+
+        if (currentMonth == logicalMonth && currentIsLeap == isLeapMonth) {
+          if (zhengYueIndex >= 0) {
+            final expectedLunarYear = _astronomicalLunarYearForIndex(
+              result,
+              i,
+              zhengYueIndex,
+            );
+
+            if (expectedLunarYear != year) {
+              continue;
+            }
           }
-        }
 
-        found = true;
-        monthSize = result.dx[i];
-        if (day < 1 || day > monthSize) {
-          throw RangeError("农历 $year 年 $finalShowName 只有 $monthSize 天");
+          found = true;
+          monthSize = result.dx[i];
+          if (day < 1 || day > monthSize) {
+            throw RangeError("农历 $year 年 $finalShowName 只有 $monthSize 天");
+          }
+          break;
         }
-        break;
       }
     }
 
@@ -296,10 +302,20 @@ class LunarDate {
     int zhengYueIndex,
   ) {
     final zhengYue1st = AstroDateTime.fromJ2000(result.hs[zhengYueIndex]);
-    final historicalYear = monthIndex < zhengYueIndex
-        ? zhengYue1st.year - 1
-        : zhengYue1st.year;
-    return _historicalToAstronomicalYear(historicalYear);
+
+    // CE 段按常规“正月前属于上一年，正月后属于当年”处理。
+    if (zhengYue1st.year > 0) {
+      final historicalYear = monthIndex < zhengYueIndex
+          ? zhengYue1st.year - 1
+          : zhengYue1st.year;
+      return _historicalToAstronomicalYear(historicalYear);
+    }
+
+    // BCE 段 AstroDateTime.year 已是天文纪年。
+    // 为了保证 LunarDate.lunarYear 与 AstroDateTime.year 语义一致，
+    // 同一份 SSQ 年表中的月份统一归属到该正月所在的天文年，
+    // 否则会把 BCE 的正月~十月错误判到下一天文年，导致 fromString 找不到。
+    return zhengYue1st.year;
   }
 
   // SSQ 的历史年份分支在 BCE 段仍按“无 0 年”口径判年。
