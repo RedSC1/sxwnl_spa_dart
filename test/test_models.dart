@@ -122,6 +122,45 @@ void main() {
       expect(result.bazi.day.gan, isA<TianGan>());
       expect(result.bazi.time.gan, isA<TianGan>());
     });
+
+    test('calcBaZiAstroDate enters Wei hour exactly at 13:00:00', () {
+      final utc = AstroDateTime(2026, 2, 18, 13, 0, 0);
+      final trueSolar = AstroDateTime(2026, 2, 18, 13, 0, 0);
+
+      final result = calcBaZiAstroDate(utc, trueSolar);
+
+      expect(result.timeZhiIndex, DiZhi.wei.index);
+      expect(result.bazi.time.zhi, DiZhi.wei);
+    });
+
+    test('2026-04-08 13:00 JD版漂移到午时, AstroDate版正确进未时', () {
+      final dt = AstroDateTime(2026, 4, 8, 13, 0, 0);
+      final jd = dt.toJ2000();
+
+      // 老方法：直接用 JD 浮点数，13:00 整点会因精度漂移落入午时
+      final oldResult = calcBaZi(jd, jd);
+      expect(oldResult.bazi.time.zhi, DiZhi.wu,
+          reason: 'JD 浮点路径在 13:00 边界漂移到午时');
+
+      // 新方法：用 AstroDateTime 整数时分秒判断，13:00 准确进入未时
+      final newResult = calcBaZiAstroDate(dt, dt);
+      expect(newResult.bazi.time.zhi, DiZhi.wei,
+          reason: 'AstroDateTime 路径在 13:00 正确进入未时');
+    });
+
+    test('calcBaZiAstroDate switches day exactly at 23:00:00', () {
+      final before = calcBaZiAstroDate(
+        AstroDateTime(2026, 2, 18, 22, 59, 59),
+        AstroDateTime(2026, 2, 18, 22, 59, 59),
+      );
+      final after = calcBaZiAstroDate(
+        AstroDateTime(2026, 2, 18, 23, 0, 0),
+        AstroDateTime(2026, 2, 18, 23, 0, 0),
+      );
+
+      expect(after.bazi.day.toString(), (before.bazi.day + 1).toString());
+      expect(after.bazi.time.zhi, DiZhi.zi);
+    });
   });
 
   group('LunarDate', () {
