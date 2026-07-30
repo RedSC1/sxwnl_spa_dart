@@ -117,6 +117,27 @@ void main() {
       expect(result.gk5[2], closeTo(1422.4731483885248, 1e-7));
     });
 
+    test('rsPL.secMax keeps original local total-eclipse contacts', () {
+      // Reykjavík, 2026-08-12 total solar eclipse. Inputs are radians / km.
+      rsPL.secMax(
+        9719.5,
+        -21.94 * 3.141592653589793 / 180,
+        64.15 * 3.141592653589793 / 180,
+        0,
+      );
+
+      expect(rsPL.LX, '全');
+      expect(rsPL.sT[0], closeTo(9720.200267634398, 1e-7));
+      expect(rsPL.sT[1], closeTo(9720.243021296714, 1e-7));
+      expect(rsPL.sT[2], closeTo(9720.283894982804, 1e-7));
+      expect(rsPL.sT[3], closeTo(9720.242642616087, 1e-7));
+      expect(rsPL.sT[4], closeTo(9720.243397911465, 1e-7));
+      expect(rsPL.sf, closeTo(1.0023036377048065, 1e-8));
+      expect(rsPL.dur, closeTo(.000755295377530274, 1e-8));
+      expect(rsPL.P1, closeTo(5.203423026330999, 1e-8));
+      expect(rsPL.V2, closeTo(1.6129579828094092, 1e-8));
+    });
+
     test('matches the rounded 2025 PMO total-lunar-eclipse TD table', () {
       ysPL.lecMax(9380.5); // 2025-09-07 total lunar eclipse.
       const pmoTd = [
@@ -179,5 +200,41 @@ void main() {
       expect(result.tt * 86400, closeTo(141.2, 5));
       expect(result.dw, closeTo(300.3, 5));
     });
+  });
+
+  group('sxwnl planetary port', () {
+    test('daJu keeps the original Mercury and Venus elongations', () {
+      final mercuryEast = daJu(Planet.mercury, .26, true);
+      final mercuryWest = daJu(Planet.mercury, .26, false);
+      final venusEast = daJu(Planet.venus, .26, true);
+      final venusWest = daJu(Planet.venus, .26, false);
+
+      expect(mercuryEast.t, closeTo(.261361704930167, 1e-12));
+      expect(mercuryEast.angle, closeTo(.316295744039011, 1e-12));
+      expect(mercuryWest.t, closeTo(.2593395248536746, 1e-12));
+      expect(mercuryWest.angle, closeTo(.3617948249875342, 1e-12));
+      expect(venusEast.t, closeTo(.2661947487037865, 1e-12));
+      expect(venusEast.angle, closeTo(.8009382678168715, 1e-12));
+      expect(venusWest.t, closeTo(.2541447330515345, 1e-12));
+      expect(venusWest.angle, closeTo(.8008395489121569, 1e-12));
+    });
+
+    test(
+      'stationary, lunar-conjunction, and opposition events keep sxwnl values',
+      () {
+        expect(
+          xingLiu(Planet.jupiter, .26, true),
+          closeTo(.25862645897578346, 1e-10),
+        );
+
+        final lunarConjunction = xingHY(Planet.venus, .26);
+        expect(lunarConjunction[0], closeTo(.2596633019180439, 1e-10));
+        expect(lunarConjunction[1], closeTo(-.08507993640332062, 1e-10));
+
+        final opposition = xingHR(Planet.jupiter, .26, true);
+        expect(opposition[0], closeTo(.2602563570552122, 1e-10));
+        expect(opposition[1], closeTo(.0045604130455663165, 1e-10));
+      },
+    );
   });
 }

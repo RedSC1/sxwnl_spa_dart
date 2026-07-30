@@ -1327,3 +1327,266 @@ class RsGS {
 
 /// 与 sxwnl 原版同名的全球日食计算器实例。
 final rsGS = RsGS();
+
+/// `rsPL.secXY()` 的中间日月坐标。
+class RsPLPoint {
+  double mCJ = 0;
+  double mCW = 0;
+  double mR = 0;
+  double mCJ2 = 0;
+  double mCW2 = 0;
+  double mR2 = 0;
+  double sCJ = 0;
+  double sCW = 0;
+  double sR = 0;
+  double sCJ2 = 0;
+  double sCW2 = 0;
+  double sR2 = 0;
+  double mr = 0;
+  double sr = 0;
+  double x = 0;
+  double y = 0;
+  double t = 0;
+}
+
+/// 寿星原版 `rsPL` 的地方日食计算器。
+///
+/// 经纬度单位为弧度（东经、北纬为正），海拔单位为 km；输入/输出时刻均为
+/// J2000.0 起算的 TT/TD 儒略日数。`sT` 的顺序为
+/// `[初亏, 食甚, 复圆, 食既, 生光]`，地平线以下的接触时刻会保留为 0。
+class RsPL {
+  int nasa_r = 0;
+  List<double> sT = List<double>.filled(5, 0);
+  String LX = '';
+  double sf = 0;
+  double sf2 = 0;
+  double sf3 = 0;
+  String sflx = ' ';
+  double b1 = 1;
+  double dur = 0;
+  double P1 = 0;
+  double V1 = 0;
+  double P2 = 0;
+  double V2 = 0;
+  double sun_s = 0;
+  double sun_j = 0;
+
+  void secXY(double jd, double L, double fa, double high, RsPLPoint re) {
+    final deltaT = dtT(jd);
+    final zd = nutation2(jd / 36525);
+    final gst =
+        pGst(jd - deltaT, deltaT) + zd[0] * math.cos(hcjj(jd / 36525) + zd[1]);
+
+    var z = List<double>.from(rsGS.moon(jd));
+    re
+      ..mCJ = z[0]
+      ..mCW = z[1]
+      ..mR = z[2];
+    _parallax(z, rad2rrad(gst + L - z[0]), fa, high);
+    re
+      ..mCJ2 = z[0]
+      ..mCW2 = z[1]
+      ..mR2 = z[2];
+
+    z = List<double>.from(rsGS.sun(jd));
+    re
+      ..sCJ = z[0]
+      ..sCW = z[1]
+      ..sR = z[2];
+    _parallax(z, rad2rrad(gst + L - z[0]), fa, high);
+    re
+      ..sCJ2 = z[0]
+      ..sCW2 = z[1]
+      ..sR2 = z[2]
+      ..mr = csSMoon / re.mR2 / rad
+      ..sr = 959.63 / re.sR2 / rad * csAU;
+    if (nasa_r != 0) re.mr *= 0.99925;
+    re
+      ..x = rad2rrad(re.mCJ2 - re.sCJ2) * math.cos((re.mCW2 + re.sCW2) / 2)
+      ..y = re.mCW2 - re.sCW2
+      ..t = jd;
+  }
+
+  double lineT(RsPLPoint g, double v, double u, double r, bool end) {
+    final b = g.y * v - g.x * u;
+    final a = u * u + v * v;
+    final bb = u * b;
+    final c = b * b - r * r * v * v;
+    final d0 = bb * bb - a * c;
+    if (d0 < 0) return 0;
+    var d = math.sqrt(d0);
+    if (!end) d = -d;
+    return g.t + ((-bb + d) / a - g.x) / v;
+  }
+
+  /// 计算一个地点的日食接触时刻和食甚参数。
+  void secMax(double jd, double L, double fa, double high) {
+    sT = List<double>.filled(5, 0);
+    LX = '';
+    sf = sf2 = sf3 = 0;
+    sflx = ' ';
+    b1 = 1;
+    dur = P1 = V1 = P2 = V2 = sun_s = sun_j = 0;
+
+    rsGS.init(jd, 7);
+    jd = rsGS.Zjd;
+    final g = RsPLPoint();
+    final g2 = RsPLPoint();
+    secXY(jd, L, fa, high, g);
+    jd -= g.x / .2128;
+
+    var u = 0.0;
+    var v = 0.0;
+    const dt = 60 / 86400;
+    for (var i = 0; i < 2; i++) {
+      secXY(jd, L, fa, high, g);
+      secXY(jd + dt, L, fa, high, g2);
+      u = (g2.y - g.y) / dt;
+      v = (g2.x - g.x) / dt;
+      jd += -(g.y * u + g.x * v) / (u * u + v * v);
+    }
+
+    var maxSf = 0.0;
+    var maxJd = jd;
+    for (var i = -30; i < 30; i += 6) {
+      final tt = jd + i / 86400;
+      secXY(tt, L, fa, high, g2);
+      final value =
+          (g2.mr + g2.sr - math.sqrt(g2.x * g2.x + g2.y * g2.y)) / g2.sr / 2;
+      if (value > maxSf) {
+        maxSf = value;
+        maxJd = tt;
+      }
+    }
+    jd = maxJd;
+    for (var i = -5; i < 5; i++) {
+      final tt = jd + i / 86400;
+      secXY(tt, L, fa, high, g2);
+      final value =
+          (g2.mr + g2.sr - math.sqrt(g2.x * g2.x + g2.y * g2.y)) / g2.sr / 2;
+      if (value > maxSf) {
+        maxSf = value;
+        maxJd = tt;
+      }
+    }
+    jd = maxJd;
+    secXY(jd, L, fa, high, g);
+    final rmin = math.sqrt(g.x * g.x + g.y * g.y);
+
+    final deltaT = dtT(jd);
+    sun_s = _sunShengJ(jd - deltaT + L / pi2, L, fa, -1) + deltaT;
+    sun_j = _sunShengJ(jd - deltaT + L / pi2, L, fa, 1) + deltaT;
+
+    if (rmin <= g.mr + g.sr) {
+      sT[1] = jd;
+      LX = '偏';
+      sf = (g.mr + g.sr - rmin) / g.sr / 2;
+      b1 = g.mr / g.sr;
+
+      secXY(sun_s, L, fa, high, g2);
+      sf2 = (g2.mr + g2.sr - math.sqrt(g2.x * g2.x + g2.y * g2.y)) / g2.sr / 2;
+      if (sf2 < 0) sf2 = 0;
+      secXY(sun_j, L, fa, high, g2);
+      sf3 = (g2.mr + g2.sr - math.sqrt(g2.x * g2.x + g2.y * g2.y)) / g2.sr / 2;
+      if (sf3 < 0) sf3 = 0;
+
+      sT[0] = lineT(g, v, u, g.mr + g.sr, false);
+      for (var i = 0; i < 3; i++) {
+        secXY(sT[0], L, fa, high, g2);
+        sT[0] = lineT(g2, v, u, g2.mr + g2.sr, false);
+      }
+      P1 = rad2mrad(math.atan2(g2.x, g2.y));
+      V1 = rad2mrad(P1 - _shiChaJ(_pGst2(sT[0]), L, fa, g2.sCJ, g2.sCW));
+
+      sT[2] = lineT(g, v, u, g.mr + g.sr, true);
+      for (var i = 0; i < 3; i++) {
+        secXY(sT[2], L, fa, high, g2);
+        sT[2] = lineT(g2, v, u, g2.mr + g2.sr, true);
+      }
+      P2 = rad2mrad(math.atan2(g2.x, g2.y));
+      V2 = rad2mrad(P2 - _shiChaJ(_pGst2(sT[2]), L, fa, g2.sCJ, g2.sCW));
+    }
+
+    void innerContacts(double radius, String kind) {
+      LX = kind;
+      sT[3] = lineT(g, v, u, radius, false);
+      secXY(sT[3], L, fa, high, g2);
+      sT[3] = lineT(g2, v, u, g2.mr - g2.sr, false);
+      sT[4] = lineT(g, v, u, radius, true);
+      secXY(sT[4], L, fa, high, g2);
+      sT[4] = lineT(g2, v, u, g2.mr - g2.sr, true);
+      dur = sT[4] - sT[3];
+    }
+
+    if (rmin <= g.mr - g.sr) innerContacts(g.mr - g.sr, '全');
+    if (rmin <= g.sr - g.mr) {
+      LX = '环';
+      sT[3] = lineT(g, v, u, g.sr - g.mr, false);
+      secXY(sT[3], L, fa, high, g2);
+      sT[3] = lineT(g2, v, u, g2.sr - g2.mr, false);
+      sT[4] = lineT(g, v, u, g.sr - g.mr, true);
+      secXY(sT[4], L, fa, high, g2);
+      sT[4] = lineT(g2, v, u, g2.sr - g2.mr, true);
+      dur = sT[4] - sT[3];
+    }
+
+    if (sT[1] < sun_s && sf2 > 0) {
+      sf = sf2;
+      sflx = '#';
+    }
+    if (sT[1] > sun_j && sf3 > 0) {
+      sf = sf3;
+      sflx = '*';
+    }
+    for (var i = 0; i < 5; i++) {
+      if (sT[i] < sun_s || sT[i] > sun_j) sT[i] = 0;
+    }
+    sun_s -= dtT(jd);
+    sun_j -= dtT(jd);
+  }
+}
+
+double _shiChaJ(double gst, double lon, double lat, double ra, double dec) {
+  final h = gst + lon - ra;
+  return math.atan2(
+    math.sin(h),
+    math.tan(lat) * math.cos(dec) - math.sin(dec) * math.cos(h),
+  );
+}
+
+double _pGst2(double jd) {
+  final deltaT = dtT(jd);
+  return pGst(jd - deltaT, deltaT);
+}
+
+double _sunShengJ(double jd, double lon, double lat, int direction) {
+  jd = (jd + .5).floorToDouble() - lon / pi2;
+  for (var i = 0; i < 2; i++) {
+    final t = jd / 36525;
+    final e = (84381.4060 - 46.836769 * t) / rad;
+    final td = t + (32 * (t + 1.8) * (t + 1.8) - 20) / 86400 / 36525;
+    final j =
+        (48950621.66 +
+            6283319653.318 * td +
+            53 * td * td -
+            994 +
+            334166 * math.cos(4.669257 + 628.307585 * td) +
+            3489 * math.cos(4.6261 + 1256.61517 * td) +
+            2060.6 * math.cos(2.67823 + 628.307585 * td) * td) /
+        10000000;
+    final ra = math.atan2(math.sin(j) * math.cos(e), math.cos(j));
+    final dec = math.asin(math.sin(e) * math.sin(j));
+    final cosH =
+        (math.sin(-50 * 60 / rad) - math.sin(lat) * math.sin(dec)) /
+        (math.cos(lat) * math.cos(dec));
+    if (cosH.abs() >= 1) return 0;
+    final gst =
+        (0.7790572732640 + 1.00273781191135448 * jd) * pi2 +
+        (0.014506 + 4612.15739966 * t + 1.39667721 * t * t) / rad;
+    jd += rad2rrad(direction * math.acos(cosH) - (gst + lon - ra)) / pi2;
+  }
+  return jd;
+}
+
+/// 与 sxwnl 原版同名的地方日食计算器实例。
+final rsPL = RsPL();
