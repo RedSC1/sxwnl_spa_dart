@@ -427,16 +427,19 @@ class FestivalEngine {
 
   /// 增强版数九逻辑：返回“三九”或“三九第2天”
   static String? getShujiu(AstroDateTime solar) {
-    final currentJD = solar.toJ2000().floor();
-    final dz = getYearJieQi(solar.year).firstWhere((j) => j.name == "冬至").dateTime;
-    final dzJD = AstroDateTime(dz.year, dz.month, dz.day).toJ2000().floor();
-    
-    // 如果还没到冬至，找去年的冬至
-    int baseJD = dzJD;
-    if (currentJD < dzJD) {
-      final lastDz = getYearJieQi(solar.year - 1).firstWhere((j) => j.name == "冬至").dateTime;
-      baseJD = AstroDateTime(lastDz.year, lastDz.month, lastDz.day).toJ2000().floor();
+    final currentJD = _calendarDayId(solar);
+
+    // getYearJieQi(year) 包含上一年和当年的两个冬至。
+    // 选择不晚于目标日期的最近一个，兼顾年初和当年冬至后的日期。
+    int? baseJD;
+    for (final jq in getYearJieQi(solar.year)) {
+      if (jq.name != "冬至") continue;
+      final candidate = _calendarDayId(jq.dateTime);
+      if (candidate <= currentJD) {
+        baseJD = candidate;
+      }
     }
+    if (baseJD == null) return null;
 
     final diff = currentJD - baseJD;
     if (diff >= 0 && diff < 81) {
@@ -453,7 +456,7 @@ class FestivalEngine {
     final xz = getYearJieQi(solar.year).firstWhere((j) => j.name == "夏至").dateTime;
     final lq = getYearJieQi(solar.year).firstWhere((j) => j.name == "立秋").dateTime;
 
-    final currentJD = solar.toJ2000().floor();
+    final currentJD = _calendarDayId(solar);
     final xzMidnight = AstroDateTime(xz.year, xz.month, xz.day);
     final lqMidnight = AstroDateTime(lq.year, lq.month, lq.day);
 
@@ -478,11 +481,11 @@ class FestivalEngine {
 
   /// 保持入梅/出梅原版逻辑 (仅限当天)
   static String? getMeiyu(AstroDateTime solar, GanZhi gz) {
-    final currentJD = solar.toJ2000().floor();
+    final currentJD = _calendarDayId(solar);
     final mz = getYearJieQi(solar.year).firstWhere((j) => j.name == "芒种").dateTime;
-    final mzJD = AstroDateTime(mz.year, mz.month, mz.day).toJ2000().floor();
+    final mzJD = _calendarDayId(mz);
     final xs = getYearJieQi(solar.year).firstWhere((j) => j.name == "小暑").dateTime;
-    final xsJD = AstroDateTime(xs.year, xs.month, xs.day).toJ2000().floor();
+    final xsJD = _calendarDayId(xs);
 
     // 芒种后第一个丙日入梅 (10天内必有)
     if (dayGanZhi(solar).gan == TianGan.bing && currentJD > mzJD && currentJD < mzJD + 11) return "入梅";
@@ -499,12 +502,16 @@ class FestivalEngine {
     while (count < n) {
       if (dayGanZhi(current).gan == TianGan.geng) {
         count++;
-        if (count == n) return current.toJ2000().floor();
+        if (count == n) return _calendarDayId(current);
       }
       current = current.add(const Duration(days: 1));
     }
-    return current.toJ2000().floor();
+    return _calendarDayId(current);
   }
+
+  /// 与原版 sxwnl 一致，以当地历日中午建立整数日序。
+  static int _calendarDayId(AstroDateTime date) =>
+      AstroDateTime(date.year, date.month, date.day, 12).toJ2000().floor();
 
   static int _daysInMonth(int year, int month) {
     if (month == 2) {
