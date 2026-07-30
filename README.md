@@ -19,6 +19,7 @@
 *   **一站式模型**：`DayInfo` 对象集成干支、农历、节日、节气、月相、日出日落、星座等全量单日信息
 *   **节日民俗**：对标原版 sxwnl (lunar.js) 补全节日库，支持分类过滤与民俗进度显示（如“初伏第3天”）
 *   **日月食（sxwnl 兼容）**：月食食甚与接触时刻、日食快速筛选、全球日食中心线及半影/本影南北界
+*   **行星位置与天象（sxwnl 兼容）**：水星至海王星位置、水星/金星大距、行星留、合月及合/冲
 *   **历史历法**：春秋、战国、秦汉等时期的历法规则（已移植部分）
 *   **纯 Dart**：零 Native 依赖，全平台支持
 
@@ -229,7 +230,7 @@ void main() {
 
 ### 10. 日月食（sxwnl 兼容接口）
 
-寿星万年历的历法日期与常规界面展示以北京时间为准。本节保留的是 `eph.js` 的低层日月食根数接口：`ysPL`、`rsGS` 与 `ecFast` 的 `jd`、`lT`、`gk*` 等原始时刻字段均为 **J2000.0 起算的 TT/TD 儒略日数**；原版 `rsGS.jieX3()` 也明确标注其曲线时间为“力学时”。需要按寿星万年历的用户界面显示时，应先减去 `dT` 转 UTC，再加 8 小时转北京时间。
+寿星万年历的历法日期与常规界面展示以北京时间为准。本节保留的是 `eph.js` 的低层日月食根数接口：`ysPL`、`rsGS` 与 `ecFast` 的 `jd`、`lT`、`gk*` 等原始时刻字段均为 **J2000.0 起算的 TT/TD 儒略日数**；原版 `rsGS.jieX3()` 也明确标注其曲线时间为“力学时”。例外是 `rsPL.secMax()` 的 `sun_s`、`sun_j`：原版在返回前已将它们转为 J2000.0 起算的 **UT** 日数，而 `sT` 仍是 TT/TD。需要按寿星万年历的用户界面显示时，应先将 TT 字段减去 `dT` 转 UTC，再加 8 小时转北京时间；UT 字段则直接加 8 小时。
 
 ```dart
 import 'package:sxwnl_spa_dart/sxwnl_spa_dart.dart';
@@ -352,6 +353,27 @@ void main() {
 }
 ```
 
+### 13. 行星位置与天象（sxwnl）
+
+`pCoord()`、`xingJJ()`、`daJu()`、`xingLiu()`、`xingHY()` 与 `xingHR()` 直接移植自寿星万年历的行星计算路径。水星至海王星的底层坐标均调用原版 `XL0_calc` 对应的 Dart 实现：包括截断 VSOP87 `XL0` 系数、地球多项式修正，以及寿星原有的 `XL0_xzb` 经验修正表和光行时迭代；并非调用 SPA。冥王星的数据表尚未接入，因此目前不提供冥王星。
+
+这些低层 API 的 `t` 和返回时刻均为 **J2000.0 起算的 TT/TD 儒略世纪**。`daJu()` 仅适用于水星、金星；`xingHR(..., true)` 对外行星求冲、对内行星求下合。用于民用时间展示时，应按该时刻的 `dT` 先转 UTC，再按需要转北京时间。
+
+这里有一条可复现的外部 oracle：SEDS 的 [Mars 2003](https://spider.seds.org/spider/Mars/mars2003.html) 记载火星冲日为 **2003-08-28 17:58:49 UTC**（北京时间为次日 01:58:49）。本库 `xingHR(Planet.mars, ..., true)` 给出 **17:58:48.77 UTC**，相差约 **−0.23 秒**；该断言已作为回归测试保留。它是与公开天文资料的交叉验证，而与原版寿星万年历的 TT 输出仍单独做逐值一致性测试。
+
+```dart
+import 'package:sxwnl_spa_dart/sxwnl_spa_dart.dart';
+
+void main() {
+  const t = 0.03656; // 约 2003 年，J2000.0 TT 儒略世纪
+  final marsOpposition = xingHR(Planet.mars, t, true);
+  print(marsOpposition); // [TT 儒略世纪, 火星与太阳黄纬差（弧度）]
+
+  final venusGreatestElongation = daJu(Planet.venus, .26, true);
+  print(venusGreatestElongation.t);
+}
+```
+
 ## 🌗 项目沿革：为什么同时内置 SPA 和 SXWNL？
 
 实话实说：早期 AI 辅助开发时，为了尽快实现真太阳时和日出日落，直接移植并接入了现成的 `dart-spa`。当时对天文历法模型理解不够，README 曾把这件事讲得过于“架构化”和玄乎；这不是两套完全不同的天文世界观。对于一个以寿星万年历为主体的移植项目，SPA 不是历法主干，也不应被当作全库默认的权威数据源。
@@ -371,6 +393,7 @@ void main() {
 *   对比基准：sxwnl 寿星天文历(万年历) 5.10 原作者: 许剑伟（https://github.com/sxwnl/sxwnl）
 *   对比范围：节气/朔、日上中天、日出、日落（均与 sxwnl 对比，不与 spa 对比）
 *   对比脚本：test/compare_jq.dart、test/compare_solar_noon.dart、test/compare_sunrise.dart、test/compare_sunset.dart
+*   系数表审计：`node tool/verify_xl_data.mjs` 从原版 `eph0.js` 读取数值，逐项精确比较本库 `XL0`（行星）、`XL1`（月球）及 `XL0_xzb`（行星经验修正）三张表。
 *   说明：未随包附带 sxwnl 原始源码，运行对比脚本需自行从 sxwnl 仓库下载后放入 test/sxwnl_js
 *   基准数据：test/compute_*_js.js 生成 js_*.json
 *   测试项不仅包含核心算法本身，也包含了与原版同样的查表修正（如 SSQ 的历史历法修正数据）。

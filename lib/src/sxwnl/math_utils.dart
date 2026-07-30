@@ -37,6 +37,12 @@ const double csREarA = 0.99834 * csREar;
 /// 原常量名：cs_sMoon。
 final double csSMoon = 0.2725076 * csREar * 1.0000036 * rad;
 
+/// 月球本影计算用的视半径常数（弧度 × 千米）。
+///
+/// 原常量名：cs_sMoon2。`rsPL.nasa_r` 启用时须以它与 [csSMoon]
+/// 的比值修正月球视半径，而不是使用原源码注释中的近似小数。
+final double csSMoon2 = 0.2722810 * csREar * 1.0000036 * rad;
+
 /// 地球极赤半径比
 const double csBa = 0.99664719;
 

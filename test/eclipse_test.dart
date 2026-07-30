@@ -1,4 +1,5 @@
 import 'package:sxwnl_spa_dart/sxwnl_spa_dart.dart';
+import 'package:sxwnl_spa_dart/src/sxwnl/delta_t.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -117,6 +118,71 @@ void main() {
       expect(result.gk5[2], closeTo(1422.4731483885248, 1e-7));
     });
 
+    test('rsPL.secMax keeps original local total-eclipse contacts', () {
+      // Reykjavík, 2026-08-12 total solar eclipse. Inputs are radians / km.
+      rsPL.secMax(
+        9719.5,
+        -21.94 * 3.141592653589793 / 180,
+        64.15 * 3.141592653589793 / 180,
+        0,
+      );
+
+      expect(rsPL.LX, '全');
+      expect(rsPL.sT[0], closeTo(9720.200267634398, 1e-7));
+      expect(rsPL.sT[1], closeTo(9720.243021296714, 1e-7));
+      expect(rsPL.sT[2], closeTo(9720.283894982804, 1e-7));
+      expect(rsPL.sT[3], closeTo(9720.242642616087, 1e-7));
+      expect(rsPL.sT[4], closeTo(9720.243397911465, 1e-7));
+      expect(rsPL.sf, closeTo(1.0023036377048065, 1e-8));
+      expect(rsPL.dur, closeTo(.000755295377530274, 1e-8));
+      expect(rsPL.P1, closeTo(5.203423026330999, 1e-8));
+      expect(rsPL.V2, closeTo(1.6129579828094092, 1e-8));
+      // sT is TT, but the source-compatible sun_s/sun_j fields are UT.
+      expect(rsPL.sun_s, closeTo(9719.714850370961, 1e-7));
+      expect(rsPL.sun_j, closeTo(9720.412456485145, 1e-7));
+    });
+
+    test('rsPL uses the original NASA lunar-radius ratio', () {
+      addTearDown(() => rsPL.nasa_r = 0);
+      rsPL.nasa_r = 1;
+      // Salem, Oregon, 2017-08-21 total solar eclipse.
+      rsPL.secMax(
+        6450.5,
+        -123.0262 * 3.141592653589793 / 180,
+        44.9429 * 3.141592653589793 / 180,
+        0,
+      );
+
+      expect(rsPL.LX, '全');
+      expect(rsPL.b1, closeTo(1.026574020633769, 1e-8));
+      expect(rsPL.sT[3], closeTo(6442.22118068683, 1e-7));
+      expect(rsPL.sT[4], closeTo(6442.222499303724, 1e-7));
+    });
+
+    test('rsPL retains contacts during polar day', () {
+      // The 2026 eclipse is visible from high Arctic locations in polar day.
+      rsPL.secMax(9719.5, 0, 80 * 3.141592653589793 / 180, 0);
+
+      expect(rsPL.sun_s, 0);
+      expect(rsPL.sun_j, 0);
+      expect(rsPL.LX, isNotEmpty);
+      expect(rsPL.sT[1], greaterThan(9000));
+    });
+
+    test(
+      'rsPL does not overwrite a caller-managed rsGS interpolation table',
+      () {
+        rsGS.init(9719.5, 7);
+        final originalZjd = rsGS.Zjd;
+        final originalFeature = rsGS.feature(9719.5).jd;
+
+        rsPL.secMax(9543.5, 0, 0, 0);
+
+        expect(rsGS.Zjd, originalZjd);
+        expect(rsGS.feature(9719.5).jd, closeTo(originalFeature, 1e-12));
+      },
+    );
+
     test('matches the rounded 2025 PMO total-lunar-eclipse TD table', () {
       ysPL.lecMax(9380.5); // 2025-09-07 total lunar eclipse.
       const pmoTd = [
@@ -178,6 +244,75 @@ void main() {
       expect(result.sf, closeTo(1.040, .002));
       expect(result.tt * 86400, closeTo(141.2, 5));
       expect(result.dw, closeTo(300.3, 5));
+    });
+  });
+
+  group('sxwnl planetary port', () {
+    test('daJu keeps the original Mercury and Venus elongations', () {
+      final mercuryEast = daJu(Planet.mercury, .26, true);
+      final mercuryWest = daJu(Planet.mercury, .26, false);
+      final venusEast = daJu(Planet.venus, .26, true);
+      final venusWest = daJu(Planet.venus, .26, false);
+
+      expect(mercuryEast.t, closeTo(.261361704930167, 1e-12));
+      expect(mercuryEast.angle, closeTo(.316295744039011, 1e-12));
+      expect(mercuryWest.t, closeTo(.2593395248536746, 1e-12));
+      expect(mercuryWest.angle, closeTo(.3617948249875342, 1e-12));
+      expect(venusEast.t, closeTo(.2661947487037865, 1e-12));
+      expect(venusEast.angle, closeTo(.8009382678168715, 1e-12));
+      expect(venusWest.t, closeTo(.2541447330515345, 1e-12));
+      expect(venusWest.angle, closeTo(.8008395489121569, 1e-12));
+    });
+
+    test(
+      'stationary, lunar-conjunction, and opposition events keep sxwnl values',
+      () {
+        expect(
+          xingLiu(Planet.mercury, .26, true),
+          closeTo(.2591139560045104, 1e-10),
+        );
+        expect(
+          xingLiu(Planet.mercury, .26, false),
+          closeTo(.25857560968230875, 1e-10),
+        );
+        expect(
+          xingLiu(Planet.jupiter, .26, true),
+          closeTo(.25862645897578346, 1e-10),
+        );
+
+        final lunarConjunction = xingHY(Planet.venus, .26);
+        expect(lunarConjunction[0], closeTo(.2596633019180439, 1e-10));
+        expect(lunarConjunction[1], closeTo(-.08507993640332062, 1e-10));
+
+        final opposition = xingHR(Planet.jupiter, .26, true);
+        expect(opposition[0], closeTo(.2602563570552122, 1e-10));
+        expect(opposition[1], closeTo(.0045604130455663165, 1e-10));
+      },
+    );
+
+    test(
+      'h2g keeps original longitude normalization and rejects Earth xingHY',
+      () {
+        final geocentric = h2g([0, 0, 1], [3.141592653589793 / 2, 0, 1]);
+        expect(geocentric[0], closeTo(7 * 3.141592653589793 / 4, 1e-12));
+        expect(geocentric[2], closeTo(1.4142135623730951, 1e-12));
+        expect(() => xingHY(Planet.earth, .26), throwsA(isA<ArgumentError>()));
+      },
+    );
+
+    test('2003 Mars opposition agrees with the SEDS external oracle', () {
+      // SEDS Mars 2003: 2003-08-28 17:58:49 UTC (JD 2452880.249178241).
+      // This is also the external reference used by taiyin-ephemeris.
+      const sedsUtc = 2452880.249178241;
+      final initialT = (sedsUtc - 2451545 + dtT(sedsUtc - 2451545)) / 36525;
+      final event = xingHR(Planet.mars, initialT, true);
+
+      // First preserve the sxwnl port itself; xingHR returns TT centuries.
+      expect(event[0], closeTo(.03655715053394121, 1e-10));
+
+      // Then compare on the civil-time scale used by the external reference.
+      final sxwnlUtc = event[0] * 36525 + 2451545 - dtT(event[0] * 36525);
+      expect((sxwnlUtc - sedsUtc) * 86400, closeTo(-.23, .1));
     });
   });
 }
