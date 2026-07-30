@@ -38,6 +38,20 @@ class SZJResult {
   SZJResult(this.jd);
 }
 
+/// 多日升中降结果，对应原版 `SZJ.rts[i]`。
+class SZJDailyResult {
+  String Ms = '--:--:--';
+  String Mz = '--:--:--';
+  String Mj = '--:--:--';
+  String s = '--:--:--';
+  String z = '--:--:--';
+  String j = '--:--:--';
+  String c = '--:--:--';
+  String h = '--:--:--';
+  String ch = '--:--:--';
+  String sj = '--:--:--';
+}
+
 /// 内部计算中间状态
 class _SZJContext {
   double H = 0.0;
@@ -53,6 +67,54 @@ class SZJ {
   double fa = 0.0; // 站点地理纬度 (弧度)
   double dt = 0.0; // TD-UT
   double E = 0.409092614; // 黄赤交角
+
+  /// 多日计算缓存，对应原版 `SZJ.rts`。
+  final List<SZJDailyResult> rts = [];
+
+  /// 计算连续 [n] 天的太阳/月亮升、中天、降落。
+  ///
+  /// [jd] 为当地起始日中午对应的 J2000.0 起算 UT 儒略日，[Jdl]、[Wdl]
+  /// 为东经、北纬（弧度），[sq] 为时区小时。返回值中的时间字符串为当地钟表时。
+  /// 原函数名：`SZJ.calcRTS(jd, n, Jdl, Wdl, sq)`。
+  List<SZJDailyResult> calcRTS(
+    double jd,
+    int n,
+    double Jdl,
+    double Wdl,
+    double sq,
+  ) {
+    if (n < 0) throw ArgumentError.value(n, 'n', 'must be non-negative');
+    L = Jdl;
+    fa = Wdl;
+    final timezoneDays = sq / 24;
+    rts
+      ..clear()
+      ..addAll(List.generate(n, (_) => SZJDailyResult()));
+    for (var i = -1; i <= n; i++) {
+      if (i >= 0 && i < n) {
+        final sun = st(jd + i + timezoneDays);
+        final day = rts[i];
+        day.s = _timeStr(sun.s - timezoneDays);
+        day.z = _timeStr(sun.z - timezoneDays);
+        day.j = _timeStr(sun.j - timezoneDays);
+        day.c = _timeStr(sun.c - timezoneDays);
+        day.h = _timeStr(sun.h - timezoneDays);
+        day.ch = _timeStr(sun.h - sun.c - .5);
+        day.sj = _timeStr(sun.j - sun.s - .5);
+      }
+      final moon = mt(jd + i + timezoneDays);
+      final assign = (double value, String Function(SZJDailyResult) setter) {
+        final dayIndex = int2(value - timezoneDays + .5) - int2(jd);
+        if (dayIndex >= 0 && dayIndex < n) {
+          setter(rts[dayIndex]);
+        }
+      };
+      assign(moon.s, (day) => day.Ms = _timeStr(moon.s - timezoneDays));
+      assign(moon.z, (day) => day.Mz = _timeStr(moon.z - timezoneDays));
+      assign(moon.j, (day) => day.Mj = _timeStr(moon.j - timezoneDays));
+    }
+    return List<SZJDailyResult>.unmodifiable(rts);
+  }
 
   /// 获取时角
   /// [h] 地平纬度, [w] 赤纬, 返回时角
@@ -191,5 +253,16 @@ class SZJ {
     res.x += rad2rrad(math.pi - ctx.H) / sv;
 
     return res;
+  }
+
+  String _timeStr(double jd) {
+    jd += .5;
+    jd -= int2(jd);
+    var seconds = int2(jd * 86400 + .5);
+    final h = seconds ~/ 3600;
+    seconds -= h * 3600;
+    final m = seconds ~/ 60;
+    seconds -= m * 60;
+    return '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
   }
 }

@@ -1,3 +1,5 @@
+// ignore_for_file: non_constant_identifier_names
+
 /// 行星位置与大距计算。
 ///
 /// 移植自寿星万年历 `eph.js` 的 `xingJJ()`、`daJu()`，底层使用已内置的
@@ -7,8 +9,10 @@ library;
 
 import 'dart:math' as math;
 
+import 'delta_t.dart';
 import 'math_utils.dart';
 import 'nutation.dart';
+import 'precession.dart';
 import 'solar_lunar_pos.dart';
 import 'xl0_pluto.dart';
 
@@ -36,6 +40,38 @@ class DaJuResult {
   final double angle;
 
   double get jd => t * 36525;
+}
+
+/// 原版 `xingX()` 的结构化结果。
+class XingXResult {
+  final int body;
+  final List<double>? heliocentricEcliptic;
+  final List<double> apparentEcliptic;
+  final List<double> apparentEquatorial;
+  final List<double> stationEquatorial;
+  final List<double> horizontal;
+  final double geocentricDistance;
+  final double lightDistance;
+  final double visualDistance;
+  final double meanSiderealTime;
+  final double trueSiderealTime;
+
+  const XingXResult({
+    required this.body,
+    required this.heliocentricEcliptic,
+    required this.apparentEcliptic,
+    required this.apparentEquatorial,
+    required this.stationEquatorial,
+    required this.horizontal,
+    required this.geocentricDistance,
+    required this.lightDistance,
+    required this.visualDistance,
+    required this.meanSiderealTime,
+    required this.trueSiderealTime,
+  });
+
+  double get azimuth => horizontal[0];
+  double get altitude => horizontal[1];
 }
 
 List<double> _llr2xyz(List<double> z) => [
@@ -70,31 +106,6 @@ List<double> h2g(List<double> z, List<double> a) {
   return _xyz2llr([body[0] - earth[0], body[1] - earth[1], body[2] - earth[2]]);
 }
 
-const List<List<double>> _preceP03 = [
-  [0, 5038.481507, -1.0790069, -0.00114045, 0.000132851, -9.51e-8],
-  [84381.406000, -0.025754, 0.0512623, -0.00772503, -4.67e-7, 3.337e-7],
-  [0, 4.199094, 0.1939873, -0.00022466, -9.12e-7, 1.20e-8],
-  [0, -46.811015, 0.0510283, 0.00052413, -6.46e-7, -1.72e-8],
-  [84381.406000, -46.836769, -0.0001831, 0.00200340, -5.76e-7, -4.34e-8],
-  [0, 10.556403, -2.3814292, -0.00121197, 0.000170663, -5.60e-8],
-  [0, 46.998973, -0.0334926, -0.00012559, 1.13e-7, -2.2e-9],
-  [629546.7936, -867.95758, 0.157992, -0.0005371, -0.00004797, 7.2e-8],
-  [0, 5028.796195, 1.1054348, 0.00007964, -0.000023857, 3.83e-8],
-  [0, 2004.191903, -0.4294934, -0.04182264, -7.089e-6, -1.274e-7],
-  [2.650545, 2306.083227, 0.2988499, 0.01801828, -5.971e-6, -3.173e-7],
-  [-2.650545, 2306.077181, 1.0927348, 0.01826837, -0.000028596, -2.904e-7],
-];
-
-double _preceP03Value(double t, int row) {
-  var value = 0.0;
-  var power = 1.0;
-  for (final coefficient in _preceP03[row]) {
-    value += coefficient * power;
-    power *= t;
-  }
-  return value / rad;
-}
-
 List<double> _plutoCoord(double t) {
   const c0 = math.pi / 180 / 100000;
   final x = -1 + 2 * (t * 36525 + 1825394.5) / 2185000;
@@ -117,11 +128,7 @@ List<double> _plutoCoord(double t) {
 }
 
 List<double> _plutoDateCoord(double t) {
-  var result = _xyz2llr(_plutoCoord(t));
-  result[0] += _preceP03Value(t, 0);
-  result = llrConv(result, _preceP03Value(t, 1));
-  result[0] -= _preceP03Value(t, 5);
-  return llrConv(result, -_preceP03Value(t, 4));
+  return hDllrJ2D(t, _xyz2llr(_plutoCoord(t)));
 }
 
 /// 行星日心黄道坐标 `[黄经, 黄纬, 向径]`。
@@ -132,6 +139,180 @@ List<double> pCoord(Planet planet, double t, int n1, int n2, int n3) {
   final xt = planet.index;
   if (planet == Planet.pluto) return _plutoDateCoord(t);
   return [xl0Calc(xt, 0, t, n1), xl0Calc(xt, 1, t, n2), xl0Calc(xt, 2, t, n3)];
+}
+
+/// 计算太阳、月亮或行星的完整站心星历。
+///
+/// [body] 沿用寿星原版编号：水星至海王星 `1..7`、冥王星 `8`、太阳 `9`、
+/// 月亮 `10`。输入 [jd] 为 J2000.0 起算的力学时日数，[longitude]、[latitude]
+/// 为弧度。结果同时保留视黄道、视赤道、站赤道和地平坐标。
+XingXResult xingXPosition(
+  int body,
+  double jd,
+  double longitude,
+  double latitude,
+) {
+  if (body < 1 || body > 10) {
+    throw ArgumentError.value(body, 'body', 'Expected sxwnl body 1..10');
+  }
+  var t = jd / 36525;
+  final zd = nutation2(t);
+  final dL = zd[0];
+  final dE = zd[1];
+  final e = hcjj(t) + dE;
+  final gstMean = _pGST2(jd);
+  final gst = gstMean + dL * math.cos(e);
+  var geocentricDistance = 0.0;
+  var lightDistance = 0.0;
+  var visualDistance = 0.0;
+  List<double>? heliocentric;
+  late List<double> apparentEcliptic;
+
+  if (body == 10) {
+    var earth = eCoord(t, 15, 15, 15);
+    var moon = mCoord(t, 1, 1, -1);
+    geocentricDistance = moon[2];
+    t -= moon[2] * csAgx / csAU;
+    final earthAtReception = eCoord(t, 15, 15, 15);
+    moon = mCoord(t, -1, -1, -1);
+    visualDistance = moon[2];
+    final earthDifference = h2g(earth, earthAtReception);
+    earthDifference[2] *= csAU;
+    lightDistance = h2g(moon, earthDifference)[2];
+    moon[0] = rad2mrad(moon[0] + dL);
+    apparentEcliptic = moon;
+  } else {
+    final earth = eCoord(t, -1, -1, -1);
+    var planet = _rawPlanetCoord(body, t);
+    heliocentric = List<double>.from(planet);
+    planet[0] = rad2mrad(planet[0]);
+    geocentricDistance = h2g(planet, earth)[2];
+    t -= geocentricDistance * csAgx;
+    final earthAtReception = eCoord(t, -1, -1, -1);
+    final planetAtReception = _rawPlanetCoord(body, t);
+    lightDistance = h2g(planetAtReception, earth)[2];
+    visualDistance = h2g(planetAtReception, earthAtReception)[2];
+    // sxwnl uses the observer-time Earth for the apparent (visual) vector;
+    // the initial-Earth vector above is retained only as the light distance.
+    planet = h2g(planetAtReception, earthAtReception);
+    planet[0] = rad2mrad(planet[0] + dL);
+    apparentEcliptic = planet;
+  }
+
+  final apparentEquatorial = llrConv(apparentEcliptic, e);
+  var stationEquatorial = List<double>.from(apparentEquatorial);
+  final hourAngle = rad2rrad(gst + longitude - stationEquatorial[0]);
+  _applyParallax(stationEquatorial, hourAngle, latitude, 0);
+  visualDistance = visualDistance == 0 ? stationEquatorial[2] : visualDistance;
+  final horizontal = List<double>.from(stationEquatorial);
+  horizontal[0] += piHalf - gst - longitude;
+  final horizon = llrConv(horizontal, piHalf - latitude);
+  horizon[0] = rad2mrad(-piHalf - horizon[0]);
+  if (horizon[1] > 0) horizon[1] += _mqc(horizon[1]);
+
+  return XingXResult(
+    body: body,
+    heliocentricEcliptic: heliocentric,
+    apparentEcliptic: apparentEcliptic,
+    apparentEquatorial: apparentEquatorial,
+    stationEquatorial: stationEquatorial,
+    horizontal: horizon,
+    geocentricDistance: geocentricDistance,
+    lightDistance: lightDistance,
+    visualDistance: visualDistance,
+    meanSiderealTime: rad2mrad(gstMean),
+    trueSiderealTime: rad2mrad(gst),
+  );
+}
+
+/// 原版 `xingX()` 的文本兼容入口。
+String xingX(int body, double jd, double longitude, double latitude) {
+  final result = xingXPosition(body, jd, longitude, latitude);
+  final rfn = body == 10 ? 2 : 8;
+  final out = StringBuffer();
+  if (result.heliocentricEcliptic != null) {
+    final z = result.heliocentricEcliptic!;
+    out
+      ..writeln(
+        '黄经一 ${_radText(z[0], false)} 黄纬一 ${_radText(z[1], false)} 向径一 ${z[2].toStringAsFixed(rfn)}',
+      )
+      ..writeln(
+        '视黄经 ${_radText(result.apparentEcliptic[0], false)} 视黄纬 ${_radText(result.apparentEcliptic[1], false)} 地心距 ${result.geocentricDistance.toStringAsFixed(rfn)}',
+      )
+      ..writeln(
+        '视赤经 ${_radText(result.apparentEquatorial[0], true)} 视赤纬 ${_radText(result.apparentEquatorial[1], false)} 光行距 ${result.lightDistance.toStringAsFixed(rfn)}',
+      );
+  } else {
+    out
+      ..writeln(
+        '视黄经 ${_radText(result.apparentEcliptic[0], false)} 视黄纬 ${_radText(result.apparentEcliptic[1], false)} 地心距 ${result.geocentricDistance.toStringAsFixed(rfn)}',
+      )
+      ..writeln(
+        '视赤经 ${_radText(result.apparentEquatorial[0], true)} 视赤纬 ${_radText(result.apparentEquatorial[1], false)} 光行距 ${result.lightDistance.toStringAsFixed(rfn)}',
+      );
+  }
+  out
+    ..writeln(
+      '站赤经 ${_radText(result.stationEquatorial[0], true)} 站赤纬 ${_radText(result.stationEquatorial[1], false)} 视距离 ${result.visualDistance.toStringAsFixed(rfn)}',
+    )
+    ..writeln(
+      '方位角 ${_radText(result.azimuth, false)} 高度角 ${_radText(result.altitude, false)}',
+    )
+    ..writeln(
+      '恒星时 ${_radText(result.meanSiderealTime, true)}(平) ${_radText(result.trueSiderealTime, true)}(真)',
+    );
+  return out.toString();
+}
+
+List<double> _rawPlanetCoord(int body, double t) {
+  if (body == 9) return [0, 0, 0];
+  return pCoord(Planet.values[body], t, -1, -1, -1);
+}
+
+void _applyParallax(
+  List<double> z,
+  double hourAngle,
+  double latitude,
+  double high,
+) {
+  final distanceScale = z[2] < 500 ? csAU : 1.0;
+  z[2] *= distanceScale;
+  final u = math.atan(csBa * math.tan(latitude));
+  final g = z[0] + hourAngle;
+  final r0 = csREar * math.cos(u) + high * math.cos(latitude);
+  final z0 = csREar * math.sin(u) * csBa + high * math.sin(latitude);
+  final observer = [r0 * math.cos(g), r0 * math.sin(g), z0];
+  final body = _llr2xyz(z);
+  final corrected = _xyz2llr([
+    body[0] - observer[0],
+    body[1] - observer[1],
+    body[2] - observer[2],
+  ]);
+  z
+    ..[0] = corrected[0]
+    ..[1] = corrected[1]
+    ..[2] = corrected[2] / distanceScale;
+}
+
+double _pGST2(double jd) {
+  final dt = dtT(jd);
+  return pGst(jd - dt, dt);
+}
+
+double _mqc(double h) => .0002967 / math.tan(h + .003138 / (h + .08919));
+
+String _radText(double value, bool rightAscension) {
+  var units = value * (rightAscension ? 12 / math.pi : 180 / math.pi);
+  final sign = !rightAscension && units < 0 ? '-' : '';
+  units = units.abs();
+  final first = units.floor();
+  final minuteValue = (units - first) * 60;
+  final minute = minuteValue.floor();
+  final second = (minuteValue - minute) * 60;
+  if (rightAscension) {
+    return '${first.toString().padLeft(2, '0')}h${minute.toString().padLeft(2, '0')}m${second.toStringAsFixed(3)}s';
+  }
+  return '$sign${first.toString().padLeft(2, ' ')}°${minute.toString().padLeft(2, '0')}′${second.toStringAsFixed(2)}″';
 }
 
 /// 行星和太阳的球面距角。

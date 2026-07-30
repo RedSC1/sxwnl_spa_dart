@@ -7,11 +7,24 @@ export 'models/calendar.dart';
 export 'models/lunar_date.dart';
 export 'models/timepack.dart';
 export 'sxwnl/gan_zhi_calc.dart';
-export 'sxwnl/solar_lunar_pos.dart' show sALon, eLon, mLon;
+export 'sxwnl/solar_lunar_pos.dart'
+    show
+        sALon,
+        eLon,
+        mLon,
+        eV,
+        mV,
+        moonIll,
+        moonRad,
+        moonMinR,
+        moonNode,
+        earthMinR;
 export 'sxwnl/eclipse.dart';
 export 'sxwnl/planetary.dart';
+export 'sxwnl/stars.dart';
 export 'sxwnl/ssq.dart';
 export 'sxwnl/true_solar_time.dart';
+export 'sxwnl/szj.dart';
 export 'sxwnl/festivals.dart';
 export 'sxwnl/astro_events.dart';
 export 'extensions/sxwnl_ext.dart';

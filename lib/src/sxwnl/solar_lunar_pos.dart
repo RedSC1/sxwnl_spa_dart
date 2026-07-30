@@ -1,3 +1,5 @@
+// ignore_for_file: non_constant_identifier_names
+
 /// 太阳/月亮位置计算。
 ///
 /// 移植自寿星万年历 (sxwnl) eph0.js 的 XL 计算部分。
@@ -288,6 +290,123 @@ double mV(double t) {
       5 * math.sin(3.88 + 8956.9934 * t) +
       5 * math.sin(0.49 + 7771.3771 * t);
   return v;
+}
+
+/// 月亮被照亮部分的比例。
+///
+/// 原函数名：`XL.moonIll(t)`。
+double moonIll(double t) {
+  final t2 = t * t;
+  final t3 = t2 * t;
+  final t4 = t3 * t;
+  const deg = math.pi / 180;
+  final D =
+      (297.8502042 +
+          445267.1115168 * t -
+          .0016300 * t2 +
+          t3 / 545868 -
+          t4 / 113065000) *
+      deg;
+  final M =
+      (357.5291092 + 35999.0502909 * t - .0001536 * t2 + t3 / 24490000) * deg;
+  final m =
+      (134.9634114 +
+          477198.8676313 * t +
+          .0089970 * t2 +
+          t3 / 69699 -
+          t4 / 14712000) *
+      deg;
+  final a =
+      math.pi -
+      D +
+      (-6.289 * math.sin(m) +
+              2.100 * math.sin(M) -
+              1.274 * math.sin(2 * D - m) -
+              .658 * math.sin(2 * D) -
+              .214 * math.sin(2 * m) -
+              .110 * math.sin(D)) *
+          deg;
+  return (1 + math.cos(a)) / 2;
+}
+
+/// 月亮站心视半径（角秒）。
+///
+/// 原函数名：`XL.moonRad(r, h)`；[r] 为月地质心距（千米），[h] 为地平纬度。
+double moonRad(double r, double h) =>
+    csSMoon / r * (1 + math.sin(h) * csREar / r);
+
+/// 月亮近地点或远地点时刻与距离 `[t, r]`。
+///
+/// [perigee] 为 true 求近地点，false 求远地点。原函数名：`XL.moonMinR`。
+List<double> moonMinR(double t, bool perigee) {
+  final period = 27.55454988 / 36525;
+  final base = (perigee ? -10.3302 : 3.4471) / 36525;
+  t = base + period * int2((t - base) / period + .5);
+  var dt = 2 / 36525;
+  var r1 = xl1Calc(2, t - dt, 10);
+  var r2 = xl1Calc(2, t, 10);
+  var r3 = xl1Calc(2, t + dt, 10);
+  t += (r1 - r3) / (r1 + r3 - 2 * r2) * dt / 2;
+  dt = .5 / 36525;
+  r1 = xl1Calc(2, t - dt, 20);
+  r2 = xl1Calc(2, t, 20);
+  r3 = xl1Calc(2, t + dt, 20);
+  t += (r1 - r3) / (r1 + r3 - 2 * r2) * dt / 2;
+  dt = 1200 / 86400 / 36525;
+  r1 = xl1Calc(2, t - dt, -1);
+  r2 = xl1Calc(2, t, -1);
+  r3 = xl1Calc(2, t + dt, -1);
+  t += (r1 - r3) / (r1 + r3 - 2 * r2) * dt / 2;
+  r2 += (r1 - r3) / (r1 + r3 - 2 * r2) * (r3 - r1) / 8;
+  return [t, r2];
+}
+
+/// 月亮升交点或降交点时刻与月球黄经 `[t, lon]`。
+///
+/// [ascending] 为 true 求升交点，false 求降交点。原函数名：`XL.moonNode`。
+List<double> moonNode(double t, bool ascending) {
+  final period = 27.21222082 / 36525;
+  final base = (ascending ? 21 : 35) / 36525;
+  t = base + period * int2((t - base) / period + .5);
+  var dt = .5 / 36525;
+  var w = xl1Calc(1, t, 10);
+  var w2 = xl1Calc(1, t + dt, 10);
+  var v = (w2 - w) / dt;
+  t -= w / v;
+  dt = .05 / 36525;
+  w = xl1Calc(1, t, 40);
+  w2 = xl1Calc(1, t + dt, 40);
+  v = (w2 - w) / dt;
+  t -= w / v;
+  w = xl1Calc(1, t, -1);
+  t -= w / v;
+  return [t, xl1Calc(0, t, -1)];
+}
+
+/// 地球近日点或远日点时刻与日地距离 `[t, r]`。
+///
+/// [perihelion] 为 true 求近日点，false 求远日点。原函数名：`XL.earthMinR`。
+List<double> earthMinR(double t, bool perihelion) {
+  final period = 365.25963586 / 36525;
+  final base = (perihelion ? 1.7 : 184.5) / 36525;
+  t = base + period * int2((t - base) / period + .5);
+  var dt = 3 / 36525;
+  var r1 = xl0Calc(0, 2, t - dt, 10);
+  var r2 = xl0Calc(0, 2, t, 10);
+  var r3 = xl0Calc(0, 2, t + dt, 10);
+  t += (r1 - r3) / (r1 + r3 - 2 * r2) * dt / 2;
+  dt = .2 / 36525;
+  r1 = xl0Calc(0, 2, t - dt, 80);
+  r2 = xl0Calc(0, 2, t, 80);
+  r3 = xl0Calc(0, 2, t + dt, 80);
+  t += (r1 - r3) / (r1 + r3 - 2 * r2) * dt / 2;
+  dt = .01 / 36525;
+  r1 = xl0Calc(0, 2, t - dt, -1);
+  r2 = xl0Calc(0, 2, t, -1);
+  r3 = xl0Calc(0, 2, t + dt, -1);
+  t += (r1 - r3) / (r1 + r3 - 2 * r2) * dt / 2;
+  r2 += (r1 - r3) / (r1 + r3 - 2 * r2) * (r3 - r1) / 8;
+  return [t, r2];
 }
 
 // ==================== 反求时间（牛顿迭代） ====================
