@@ -268,11 +268,11 @@ EcFastResult ecFast(double jd) {
           152 * math.cos(4.94 + 6585.761 * t - 2 * t2 - 19 * t3b) +
           130 * math.cos(.74 - 7700.389 * t - 2 * t2 - 25 * t3b) +
           109 * math.cos(5.20 + 7771.377 * t) +
-          105 * math.cos(2.31 + 8956.9934 * t + t2 + 25 * t3b) +
+          105 * math.cos(2.31 + 8956.993 * t + t2 + 25 * t3b) +
           80 * math.cos(5.38 - 8538.241 * t + 2.8 * t2 + 26 * t3b) +
           49 * math.cos(6.24 + 628.302 * t) +
-          35 * math.cos(2.7 + 22756.817 * t - 2 * t2 - 13 * t3b) +
-          31 * math.cos(4.1 + 16171.056 * t + 6 * t3b) +
+          35 * math.cos(2.7 + 22756.817 * t - 3 * t2 - 13 * t3b) +
+          31 * math.cos(4.1 + 16171.056 * t - t2 + 6 * t3b) +
           24 * math.cos(1.7 + 7842.365 * t - 2 * t2 - 19 * t3b) +
           23 * math.cos(3.9 + 24986.074 * t + 5 * t2 + 75 * t3b) +
           22 * math.cos(.4 + 14428.126 * t - 4 * t2 - 38 * t3b) +
@@ -613,7 +613,7 @@ class RsGSFrame {
 }
 
 class _GeoPoint {
-  _GeoPoint({this.j = 0, this.w = 100, this.r1 = 0, this.r2 = 0});
+  _GeoPoint({this.j = 100, this.w = 100, this.r1 = 0, this.r2 = 0});
 
   double j;
   double w;
@@ -835,17 +835,11 @@ class RsGS {
       b[0] = math.pi / 2 + b[0];
       b[1] = math.pi / 2 - b[1];
       if (i > 0 && b[0] < Zs[6]) b[0] += pi2;
-      Zs.addAll([
-        s[0],
-        s[1],
-        s[2],
-        m[0],
-        m[1],
-        m[2],
-        b[0],
-        b[1],
-        pGst(t * 36525 - dT, dT) + zd[0] * math.cos(e),
-      ]);
+      var gst = pGst(t * 36525 - dT, dT) + zd[0] * math.cos(e);
+      if (i > 0 && gst < Zs[8]) {
+        gst += pi2;
+      }
+      Zs.addAll([s[0], s[1], s[2], m[0], m[1], m[2], b[0], b[1], gst]);
     }
     final p = Zs.length - 9;
     dyj = (Zs[2] + Zs[p + 2] - Zs[5] - Zs[p + 5]) / 2 / csREar;

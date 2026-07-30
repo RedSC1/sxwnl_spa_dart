@@ -89,6 +89,34 @@ void main() {
       expect(result.L4.first, closeTo(2.059878677641059, 1e-7));
     });
 
+    test('rsGS unwraps sidereal time across 2π before interpolation', () {
+      // 2006-03-29 total eclipse: the 7-point GST samples cross 2π.
+      // This guards the original eph.js longitude continuity behavior.
+      rsGS.init(2278.71, 7);
+      final feature = rsGS.feature(2278.71);
+      final limits = rsGS.jieX(2278.71);
+
+      expect(feature.lx, 'T');
+      expect(feature.gk2[0], closeTo(1.723766388954644, 1e-7));
+      expect(feature.gk4[0], closeTo(1.4488076583684943, 1e-7));
+      expect(limits.L0, hasLength(414));
+      expect(
+        limits.L0[limits.L0.length - 2],
+        closeTo(1.7237665286039174, 1e-7),
+      );
+    });
+
+    test('rsGS retains the original [100, 100] no-intersection sentinel', () {
+      // 2003-11-23: no Earth intersection for the local-noon axis point.
+      rsGS.init(1422.32, 7);
+      final result = rsGS.feature(1422.32);
+
+      expect(result.lx, 'T');
+      expect(result.gk5[0], 100);
+      expect(result.gk5[1], 100);
+      expect(result.gk5[2], closeTo(1422.4731483885248, 1e-7));
+    });
+
     test('matches the rounded 2025 PMO total-lunar-eclipse TD table', () {
       ysPL.lecMax(9380.5); // 2025-09-07 total lunar eclipse.
       const pmoTd = [
