@@ -1,3 +1,9 @@
+## 0.20.0
+
+- **新增冥王星位置**：机械生成并纳入寿星原版 `XL0Pluto` 系数表，移植 `pluto_coord()` 和 P03 岁差转换；`pCoord(Planet.pluto, ...)` 现可返回冥王星黄经、黄纬和日心距离。
+- **补充冥王星回归测试**：J2000 与 `t = 0.26` 位置结果均与原版 `p_coord(8, ...)` 对齐；明确冥王星不支持原版未覆盖的 `xingLiu()` / `xingHR()` 快速事件接口。
+- **扩展系数审计**：`tool/verify_xl_data.mjs` 现同时逐项核对原版 `XL0Pluto` 与 Dart 生成表。
+
 ## 0.19.0
 
 - **修正动态节日日期**：数九改用当地历日中午日序并选择目标日期之前最近的冬至；同步修正三伏、入梅和出梅的日期基准，修复当年冬至后数九不显示的问题。感谢 [tsunehimatoi](https://github.com/tsunehimatoi) 提交 [PR #1](https://github.com/RedSC1/sxwnl_spa_dart/pull/1)。

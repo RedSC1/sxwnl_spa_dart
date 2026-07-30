@@ -19,7 +19,7 @@
 *   **一站式模型**：`DayInfo` 对象集成干支、农历、节日、节气、月相、日出日落、星座等全量单日信息
 *   **节日民俗**：对标原版 sxwnl (lunar.js) 补全节日库，支持分类过滤与民俗进度显示（如“初伏第3天”）
 *   **日月食（sxwnl 兼容）**：月食食甚与接触时刻、日食快速筛选、全球日食中心线及半影/本影南北界
-*   **行星位置与天象（sxwnl 兼容）**：水星至海王星位置、水星/金星大距、行星留、合月及合/冲
+*   **行星位置与天象（sxwnl 兼容）**：水星至冥王星位置、水星/金星大距、行星留、合月及合/冲
 *   **历史历法**：春秋、战国、秦汉等时期的历法规则（已移植部分）
 *   **纯 Dart**：零 Native 依赖，全平台支持
 
@@ -27,7 +27,7 @@
 
 ```yaml
 dependencies:
-  sxwnl_spa_dart: ^0.19.0
+  sxwnl_spa_dart: ^0.20.0
 ```
 
 > `0.18.1` 起，`LunarDate.lunarYear` 对外语义真正统一为天文纪年（含公元 0 年）。
@@ -355,7 +355,7 @@ void main() {
 
 ### 13. 行星位置与天象（sxwnl）
 
-`pCoord()`、`xingJJ()`、`daJu()`、`xingLiu()`、`xingHY()` 与 `xingHR()` 直接移植自寿星万年历的行星计算路径。水星至海王星的底层坐标均调用原版 `XL0_calc` 对应的 Dart 实现：包括截断 VSOP87 `XL0` 系数、地球多项式修正，以及寿星原有的 `XL0_xzb` 经验修正表和光行时迭代；并非调用 SPA。冥王星的数据表尚未接入，因此目前不提供冥王星。
+`pCoord()`、`xingJJ()`、`daJu()`、`xingLiu()`、`xingHY()` 与 `xingHR()` 直接移植自寿星万年历的行星计算路径。水星至海王星的底层坐标调用原版 `XL0_calc` 对应的 Dart 实现；冥王星则接入原版 `XL0Pluto` 级数并沿用 P03 岁差转换。所有这些路径都包括寿星原有的系数截断、地球多项式修正和对应经验修正；行星事件求解继续保留原版光行时迭代，并非调用 SPA。冥王星可用于 `pCoord()`、`xingJJ()` 与 `xingHY()`，但原版没有为它提供 `xingLiu()` / `xingHR()` 快速事件表，因此这两个接口对冥王星会抛出参数错误。
 
 这些低层 API 的 `t` 和返回时刻均为 **J2000.0 起算的 TT/TD 儒略世纪**。`daJu()` 仅适用于水星、金星；`xingHR(..., true)` 对外行星求冲、对内行星求下合。用于民用时间展示时，应按该时刻的 `dT` 先转 UTC，再按需要转北京时间。
 
@@ -393,7 +393,7 @@ void main() {
 *   对比基准：sxwnl 寿星天文历(万年历) 5.10 原作者: 许剑伟（https://github.com/sxwnl/sxwnl）
 *   对比范围：节气/朔、日上中天、日出、日落（均与 sxwnl 对比，不与 spa 对比）
 *   对比脚本：test/compare_jq.dart、test/compare_solar_noon.dart、test/compare_sunrise.dart、test/compare_sunset.dart
-*   系数表审计：`node tool/verify_xl_data.mjs` 从原版 `eph0.js` 读取数值，逐项精确比较本库 `XL0`（行星）、`XL1`（月球）及 `XL0_xzb`（行星经验修正）三张表。
+*   系数表审计：`node tool/verify_xl_data.mjs` 从原版 `eph0.js` 读取数值，逐项精确比较本库 `XL0`（行星）、`XL1`（月球）、`XL0_xzb`（行星经验修正）及 `XL0Pluto`（冥王星）四张表。
 *   说明：未随包附带 sxwnl 原始源码，运行对比脚本需自行从 sxwnl 仓库下载后放入 test/sxwnl_js
 *   基准数据：test/compute_*_js.js 生成 js_*.json
 *   测试项不仅包含核心算法本身，也包含了与原版同样的查表修正（如 SSQ 的历史历法修正数据）。
@@ -430,7 +430,7 @@ Chinese calendar & astronomical calculations library based on sxwnl + SPA.
 
 ```yaml
 dependencies:
-  sxwnl_spa_dart: ^0.19.0
+  sxwnl_spa_dart: ^0.20.0
 ```
 
 ### Quick Start

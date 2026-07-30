@@ -300,6 +300,26 @@ void main() {
       },
     );
 
+    test('pCoord ports the original Pluto XL0Pluto/P03 position', () {
+      final j2000 = pCoord(Planet.pluto, 0, -1, -1, -1);
+      final t026 = pCoord(Planet.pluto, .26, 10, 10, 10);
+
+      expect(j2000[0], closeTo(4.372856668464477, 1e-12));
+      expect(j2000[1], closeTo(.19480427171780515, 1e-12));
+      expect(j2000[2], closeTo(30.22324455021225, 1e-12));
+      expect(t026[0], closeTo(5.294013982349257, 1e-12));
+      expect(t026[1], closeTo(-.0675019681346099, 1e-12));
+      expect(t026[2], closeTo(35.42131186535351, 1e-12));
+      expect(
+        () => xingLiu(Planet.pluto, .26, true),
+        throwsA(isA<ArgumentError>()),
+      );
+      expect(
+        () => xingHR(Planet.pluto, .26, true),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+
     test('2003 Mars opposition agrees with the SEDS external oracle', () {
       // SEDS Mars 2003: 2003-08-28 17:58:49 UTC (JD 2452880.249178241).
       // This is also the external reference used by taiyin-ephemeris.

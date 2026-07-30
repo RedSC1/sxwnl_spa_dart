@@ -10,22 +10,24 @@ import vm from 'node:vm';
 
 const jsPath = process.argv[2] ?? '../sxwnl/src/eph0.js';
 const dartPath = process.argv[3] ?? 'lib/src/sxwnl/xl_data.dart';
+const plutoDartPath = process.argv[4] ?? 'lib/src/sxwnl/xl0_pluto.dart';
 const jsContext = {Math};
 vm.runInNewContext(fs.readFileSync(jsPath, 'utf8'), jsContext, {filename: jsPath});
 
 const dart = fs.readFileSync(dartPath, 'utf8');
+const plutoDart = fs.readFileSync(plutoDartPath, 'utf8');
 
-function listExpression(name) {
+function listExpression(source, name) {
   const declaration = `const List<`;
-  const index = dart.indexOf(` ${name} =`, dart.indexOf(declaration));
+  const index = source.indexOf(` ${name} =`, source.indexOf(declaration));
   if (index < 0) throw new Error(`Dart declaration ${name} was not found`);
-  const open = dart.indexOf('[', index);
+  const open = source.indexOf('[', index);
   let depth = 0;
   let lineComment = false;
   let blockComment = false;
-  for (let i = open; i < dart.length; i++) {
-    const c = dart[i];
-    const next = dart[i + 1];
+  for (let i = open; i < source.length; i++) {
+    const c = source[i];
+    const next = source[i + 1];
     if (lineComment) {
       if (c === '\n') lineComment = false;
       continue;
@@ -50,15 +52,15 @@ function listExpression(name) {
     if (c === '[') depth++;
     if (c === ']') {
       depth--;
-      if (depth === 0) return dart.slice(open, i + 1);
+      if (depth === 0) return source.slice(open, i + 1);
     }
   }
   throw new Error(`Unterminated Dart list for ${name}`);
 }
 
-function dartTable(name) {
-  const expression = listExpression(name).replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
-  return vm.runInNewContext(`(${expression})`, {}, {filename: dartPath});
+function dartTable(source, sourcePath, name) {
+  const expression = listExpression(source, name).replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+  return vm.runInNewContext(`(${expression})`, {}, {filename: sourcePath});
 }
 
 function compare(path, a, b) {
@@ -79,7 +81,11 @@ for (const [dartName, jsName] of [
   ['xl0', 'XL0'],
   ['xl1', 'XL1'],
 ]) {
-  const difference = compare(dartName, dartTable(dartName), jsContext[jsName]);
+  const difference = compare(dartName, dartTable(dart, dartPath, dartName), jsContext[jsName]);
   if (difference) throw new Error(difference);
   console.log(`${dartName}: exact coefficient-table match`);
 }
+
+const plutoDifference = compare('xl0Pluto', dartTable(plutoDart, plutoDartPath, 'xl0Pluto'), jsContext.XL0Pluto);
+if (plutoDifference) throw new Error(plutoDifference);
+console.log('xl0Pluto: exact coefficient-table match');

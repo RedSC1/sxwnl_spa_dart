@@ -1,7 +1,8 @@
 /// 行星位置与大距计算。
 ///
 /// 移植自寿星万年历 `eph.js` 的 `xingJJ()`、`daJu()`，底层使用已内置的
-/// VSOP87 `XL0` 数据。时间均为 J2000.0 起算的 TT/TD 儒略世纪。
+/// VSOP87 `XL0` 数据；冥王星使用原版 `XL0Pluto` 级数和 P03 岁差转换。
+/// 时间均为 J2000.0 起算的 TT/TD 儒略世纪。
 library;
 
 import 'dart:math' as math;
@@ -9,12 +10,20 @@ import 'dart:math' as math;
 import 'math_utils.dart';
 import 'nutation.dart';
 import 'solar_lunar_pos.dart';
+import 'xl0_pluto.dart';
 
-/// 寿星行星编号：地球 0，水星至海王星为 1..7。
-///
-/// 冥王星（原版编号 8）需要其单独的 `XL0Pluto` 数据表；该表由
-/// `tool/extract_xl0_pluto.mjs` 机械生成后再接入，避免人工转录。
-enum Planet { earth, mercury, venus, mars, jupiter, saturn, uranus, neptune }
+/// 寿星行星编号：地球 0，水星至海王星为 1..7，冥王星为 8。
+enum Planet {
+  earth,
+  mercury,
+  venus,
+  mars,
+  jupiter,
+  saturn,
+  uranus,
+  neptune,
+  pluto,
+}
 
 /// 水星/金星大距结果。
 class DaJuResult {
@@ -61,17 +70,73 @@ List<double> h2g(List<double> z, List<double> a) {
   return _xyz2llr([body[0] - earth[0], body[1] - earth[1], body[2] - earth[2]]);
 }
 
+const List<List<double>> _preceP03 = [
+  [0, 5038.481507, -1.0790069, -0.00114045, 0.000132851, -9.51e-8],
+  [84381.406000, -0.025754, 0.0512623, -0.00772503, -4.67e-7, 3.337e-7],
+  [0, 4.199094, 0.1939873, -0.00022466, -9.12e-7, 1.20e-8],
+  [0, -46.811015, 0.0510283, 0.00052413, -6.46e-7, -1.72e-8],
+  [84381.406000, -46.836769, -0.0001831, 0.00200340, -5.76e-7, -4.34e-8],
+  [0, 10.556403, -2.3814292, -0.00121197, 0.000170663, -5.60e-8],
+  [0, 46.998973, -0.0334926, -0.00012559, 1.13e-7, -2.2e-9],
+  [629546.7936, -867.95758, 0.157992, -0.0005371, -0.00004797, 7.2e-8],
+  [0, 5028.796195, 1.1054348, 0.00007964, -0.000023857, 3.83e-8],
+  [0, 2004.191903, -0.4294934, -0.04182264, -7.089e-6, -1.274e-7],
+  [2.650545, 2306.083227, 0.2988499, 0.01801828, -5.971e-6, -3.173e-7],
+  [-2.650545, 2306.077181, 1.0927348, 0.01826837, -0.000028596, -2.904e-7],
+];
+
+double _preceP03Value(double t, int row) {
+  var value = 0.0;
+  var power = 1.0;
+  for (final coefficient in _preceP03[row]) {
+    value += coefficient * power;
+    power *= t;
+  }
+  return value / rad;
+}
+
+List<double> _plutoCoord(double t) {
+  const c0 = math.pi / 180 / 100000;
+  final x = -1 + 2 * (t * 36525 + 1825394.5) / 2185000;
+  final scaledT = t / 100000000;
+  final result = [0.0, 0.0, 0.0];
+  for (var i = 0; i < xl0Pluto.length; i++) {
+    final terms = xl0Pluto[i];
+    var value = 0.0;
+    for (var j = 0; j < terms.length; j += 3) {
+      value += terms[j] * math.sin(terms[j + 1] * scaledT + terms[j + 2] * c0);
+    }
+    if (i % 3 == 1) value *= x;
+    if (i % 3 == 2) value *= x * x;
+    result[i ~/ 3] += value / 100000000;
+  }
+  result[0] += 9.922274 + 0.154154 * x;
+  result[1] += 10.016090 + 0.064073 * x;
+  result[2] += -3.947474 - 0.042746 * x;
+  return result;
+}
+
+List<double> _plutoDateCoord(double t) {
+  var result = _xyz2llr(_plutoCoord(t));
+  result[0] += _preceP03Value(t, 0);
+  result = llrConv(result, _preceP03Value(t, 1));
+  result[0] -= _preceP03Value(t, 5);
+  return llrConv(result, -_preceP03Value(t, 4));
+}
+
 /// 行星日心黄道坐标 `[黄经, 黄纬, 向径]`。
 ///
-/// 原函数名：`p_coord(xt, t, n1, n2, n3)` 的水星至海王星部分。
+/// 原函数名：`p_coord(xt, t, n1, n2, n3)`；水星至海王星使用 `XL0`，
+/// 冥王星使用独立的 `XL0Pluto` 级数。
 List<double> pCoord(Planet planet, double t, int n1, int n2, int n3) {
   final xt = planet.index;
+  if (planet == Planet.pluto) return _plutoDateCoord(t);
   return [xl0Calc(xt, 0, t, n1), xl0Calc(xt, 1, t, n2), xl0Calc(xt, 2, t, n3)];
 }
 
 /// 行星和太阳的球面距角。
 ///
-/// 原函数名：`xingJJ(xt, t, jing)`；仅对水星至海王星有效。
+/// 原函数名：`xingJJ(xt, t, jing)`；对水星至冥王星有效。
 double xingJJ(Planet planet, double t, int jing) {
   if (planet == Planet.earth) {
     throw ArgumentError.value(
@@ -152,11 +217,11 @@ List<double> _xingLiu0(Planet planet, double t, int n, double lightTime) {
 ///
 /// [direct] 为 true 求顺留，为 false 求逆留。原函数名：`xingLiu(xt,t,sn)`。
 double xingLiu(Planet planet, double t, bool direct) {
-  if (planet == Planet.earth) {
+  if (planet == Planet.earth || planet == Planet.pluto) {
     throw ArgumentError.value(
       planet,
       'planet',
-      'Earth has no stationary point',
+      'Stationary events are supported for Mercury through Neptune only',
     );
   }
   const periods = [116, 584, 780, 399, 378, 370, 367];
@@ -258,11 +323,11 @@ List<double> _xingSP(
 /// 行星合/冲（内行星为上、下合）时刻与黄纬差 `[t, Δlat]`。
 /// [oppositionOrInferior] 为 true 求冲或下合。原函数名：`xingHR(xt,t,f)`。
 List<double> xingHR(Planet planet, double t, bool oppositionOrInferior) {
-  if (planet == Planet.earth) {
+  if (planet == Planet.earth || planet == Planet.pluto) {
     throw ArgumentError.value(
       planet,
       'planet',
-      'Earth has no conjunction/opposition',
+      'Conjunction/opposition events are supported for Mercury through Neptune only',
     );
   }
   const periods = [116, 584, 780, 399, 378, 370, 367];
