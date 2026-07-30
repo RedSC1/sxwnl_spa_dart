@@ -1351,10 +1351,15 @@ class RsPLPoint {
 
 /// 寿星原版 `rsPL` 的地方日食计算器。
 ///
-/// 经纬度单位为弧度（东经、北纬为正），海拔单位为 km；输入/输出时刻均为
-/// J2000.0 起算的 TT/TD 儒略日数。`sT` 的顺序为
-/// `[初亏, 食甚, 复圆, 食既, 生光]`，地平线以下的接触时刻会保留为 0。
+/// 经纬度单位为弧度（东经、北纬为正），海拔单位为 km。`sT` 的时刻为
+/// J2000.0 起算的 TT/TD 儒略日数，顺序为 `[初亏, 食甚, 复圆, 食既, 生光]`；
+/// 地平线以下的接触时刻会保留为 0。`sun_s`、`sun_j` 沿用原版，为 J2000.0
+/// 起算的 UT 儒略日数；极昼/极夜无日出日没时为 0。
 class RsPL {
+  // 原版 JavaScript 共用全局 rsGS；Dart 同时公开两个计算器，故隔离插值表，
+  // 避免 secMax() 改写调用方预先初始化的 rsGS 状态。
+  final RsGS _rsGS = RsGS();
+
   int nasa_r = 0;
   List<double> sT = List<double>.filled(5, 0);
   String LX = '';
@@ -1377,7 +1382,7 @@ class RsPL {
     final gst =
         pGst(jd - deltaT, deltaT) + zd[0] * math.cos(hcjj(jd / 36525) + zd[1]);
 
-    var z = List<double>.from(rsGS.moon(jd));
+    var z = List<double>.from(_rsGS.moon(jd));
     re
       ..mCJ = z[0]
       ..mCW = z[1]
@@ -1388,7 +1393,7 @@ class RsPL {
       ..mCW2 = z[1]
       ..mR2 = z[2];
 
-    z = List<double>.from(rsGS.sun(jd));
+    z = List<double>.from(_rsGS.sun(jd));
     re
       ..sCJ = z[0]
       ..sCW = z[1]
@@ -1400,7 +1405,7 @@ class RsPL {
       ..sR2 = z[2]
       ..mr = csSMoon / re.mR2 / rad
       ..sr = 959.63 / re.sR2 / rad * csAU;
-    if (nasa_r != 0) re.mr *= 0.99925;
+    if (nasa_r != 0) re.mr *= csSMoon2 / csSMoon;
     re
       ..x = rad2rrad(re.mCJ2 - re.sCJ2) * math.cos((re.mCW2 + re.sCW2) / 2)
       ..y = re.mCW2 - re.sCW2
@@ -1428,8 +1433,8 @@ class RsPL {
     b1 = 1;
     dur = P1 = V1 = P2 = V2 = sun_s = sun_j = 0;
 
-    rsGS.init(jd, 7);
-    jd = rsGS.Zjd;
+    _rsGS.init(jd, 7);
+    jd = _rsGS.Zjd;
     final g = RsPLPoint();
     final g2 = RsPLPoint();
     secXY(jd, L, fa, high, g);
@@ -1474,8 +1479,13 @@ class RsPL {
     final rmin = math.sqrt(g.x * g.x + g.y * g.y);
 
     final deltaT = dtT(jd);
-    sun_s = _sunShengJ(jd - deltaT + L / pi2, L, fa, -1) + deltaT;
-    sun_j = _sunShengJ(jd - deltaT + L / pi2, L, fa, 1) + deltaT;
+    final sunriseUt = _sunShengJ(jd - deltaT + L / pi2, L, fa, -1);
+    final sunsetUt = _sunShengJ(jd - deltaT + L / pi2, L, fa, 1);
+    final continuousDaylight = sunriseUt == null && sunsetUt == null;
+    final polarNight = sunriseUt == 0 && sunsetUt == 0;
+    final hasSunriseAndSunset = !continuousDaylight && !polarNight;
+    sun_s = (sunriseUt ?? 0) + deltaT;
+    sun_j = (sunsetUt ?? 0) + deltaT;
 
     if (rmin <= g.mr + g.sr) {
       sT[1] = jd;
@@ -1483,12 +1493,16 @@ class RsPL {
       sf = (g.mr + g.sr - rmin) / g.sr / 2;
       b1 = g.mr / g.sr;
 
-      secXY(sun_s, L, fa, high, g2);
-      sf2 = (g2.mr + g2.sr - math.sqrt(g2.x * g2.x + g2.y * g2.y)) / g2.sr / 2;
-      if (sf2 < 0) sf2 = 0;
-      secXY(sun_j, L, fa, high, g2);
-      sf3 = (g2.mr + g2.sr - math.sqrt(g2.x * g2.x + g2.y * g2.y)) / g2.sr / 2;
-      if (sf3 < 0) sf3 = 0;
+      if (hasSunriseAndSunset) {
+        secXY(sun_s, L, fa, high, g2);
+        sf2 =
+            (g2.mr + g2.sr - math.sqrt(g2.x * g2.x + g2.y * g2.y)) / g2.sr / 2;
+        if (sf2 < 0) sf2 = 0;
+        secXY(sun_j, L, fa, high, g2);
+        sf3 =
+            (g2.mr + g2.sr - math.sqrt(g2.x * g2.x + g2.y * g2.y)) / g2.sr / 2;
+        if (sf3 < 0) sf3 = 0;
+      }
 
       sT[0] = lineT(g, v, u, g.mr + g.sr, false);
       for (var i = 0; i < 3; i++) {
@@ -1538,11 +1552,20 @@ class RsPL {
       sf = sf3;
       sflx = '*';
     }
-    for (var i = 0; i < 5; i++) {
-      if (sT[i] < sun_s || sT[i] > sun_j) sT[i] = 0;
+    if (!continuousDaylight) {
+      for (var i = 0; i < 5; i++) {
+        if (!hasSunriseAndSunset || sT[i] < sun_s || sT[i] > sun_j) {
+          sT[i] = 0;
+        }
+      }
     }
-    sun_s -= dtT(jd);
-    sun_j -= dtT(jd);
+    if (!hasSunriseAndSunset) {
+      sun_s = sun_j = 0;
+    } else {
+      // 与原版一致：接触时刻 sT 为 TT；sun_s/sun_j 最终回到 UT。
+      sun_s -= dtT(jd);
+      sun_j -= dtT(jd);
+    }
   }
 }
 
@@ -1559,7 +1582,7 @@ double _pGst2(double jd) {
   return pGst(jd - deltaT, deltaT);
 }
 
-double _sunShengJ(double jd, double lon, double lat, int direction) {
+double? _sunShengJ(double jd, double lon, double lat, int direction) {
   jd = (jd + .5).floorToDouble() - lon / pi2;
   for (var i = 0; i < 2; i++) {
     final t = jd / 36525;
@@ -1579,11 +1602,13 @@ double _sunShengJ(double jd, double lon, double lat, int direction) {
     final cosH =
         (math.sin(-50 * 60 / rad) - math.sin(lat) * math.sin(dec)) /
         (math.cos(lat) * math.cos(dec));
-    if (cosH.abs() >= 1) return 0;
+    // cosH <= -1 为极昼，和极夜（cosH >= 1）不能共用同一 sentinel。
+    if (cosH <= -1) return null;
+    if (cosH >= 1) return 0;
     final gst =
         (0.7790572732640 + 1.00273781191135448 * jd) * pi2 +
         (0.014506 + 4612.15739966 * t + 1.39667721 * t * t) / rad;
-    jd += rad2rrad(direction * math.acos(cosH) - (gst + lon - ra)) / pi2;
+    jd += rad2rrad(direction * math.acos(cosH) - (gst + lon - ra)) / 6.28;
   }
   return jd;
 }

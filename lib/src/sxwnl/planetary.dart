@@ -37,7 +37,19 @@ List<double> _llr2xyz(List<double> z) => [
 
 List<double> _xyz2llr(List<double> z) {
   final r = math.sqrt(z[0] * z[0] + z[1] * z[1] + z[2] * z[2]);
-  return [math.atan2(z[1], z[0]), math.asin(z[2] / r), r];
+  return [rad2mrad(math.atan2(z[1], z[0])), math.asin(z[2] / r), r];
+}
+
+double _j1J2(double j1, double w1, double j2, double w2) {
+  var dJ = rad2rrad(j1 - j2);
+  final dW = w1 - w2;
+  if (dJ.abs() < 1 / 1000 && dW.abs() < 1 / 1000) {
+    dJ *= math.cos((w1 + w2) / 2);
+    return math.sqrt(dJ * dJ + dW * dW);
+  }
+  return math.acos(
+    math.sin(w1) * math.sin(w2) + math.cos(w1) * math.cos(w2) * math.cos(dJ),
+  );
 }
 
 /// 日心球坐标转地心球坐标。
@@ -81,10 +93,7 @@ double xingJJ(Planet planet, double t, int jing) {
   }
   final sunLon = earth[0] + math.pi;
   final sunLat = -earth[1];
-  return math.acos(
-    math.sin(body[1]) * math.sin(sunLat) +
-        math.cos(body[1]) * math.cos(sunLat) * math.cos(body[0] - sunLon),
-  );
+  return _j1J2(body[0], body[1], sunLon, sunLat);
 }
 
 /// 水星或金星的东/西大距。
@@ -166,12 +175,13 @@ double xingLiu(Planet planet, double t, bool direct) {
     t += xt > 2 ? tc : -tc;
   }
   const steps = [5 / 36525, 1 / 36525, .5 / 36525, 2e-6];
+  late List<double> y2;
   for (var i = 0; i < 4; i++) {
     final dt = steps[i];
     final n = i >= 3 ? -1 : 8;
-    final g = i >= 3 ? _xingLiu0(planet, t, 8, 0)[2] * csAgx : 0.0;
+    final g = i >= 3 ? y2[2] * csAgx : 0.0;
     final y1 = _xingLiu0(planet, t - dt, n, g);
-    final y2 = _xingLiu0(planet, t, n, g);
+    y2 = _xingLiu0(planet, t, n, g);
     final y3 = _xingLiu0(planet, t + dt, n, g);
     t += (y1[0] - y3[0]) / (y1[0] + y3[0] - 2 * y2[0]) * dt / 2;
   }
@@ -198,6 +208,13 @@ List<double> _xingMP(Planet planet, double t, int n, double e, List<double> g) {
 ///
 /// 原函数名：`xingHY(xt,t)`。
 List<double> xingHY(Planet planet, double t) {
+  if (planet == Planet.earth) {
+    throw ArgumentError.value(
+      planet,
+      'planet',
+      'Earth has no lunar conjunction event',
+    );
+  }
   var g = [0.0, 0.0, 0.0, 0.0];
   List<double> d = [];
   for (var i = 0; i < 3; i++) {

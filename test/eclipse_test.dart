@@ -137,7 +137,51 @@ void main() {
       expect(rsPL.dur, closeTo(.000755295377530274, 1e-8));
       expect(rsPL.P1, closeTo(5.203423026330999, 1e-8));
       expect(rsPL.V2, closeTo(1.6129579828094092, 1e-8));
+      // sT is TT, but the source-compatible sun_s/sun_j fields are UT.
+      expect(rsPL.sun_s, closeTo(9719.714850370961, 1e-7));
+      expect(rsPL.sun_j, closeTo(9720.412456485145, 1e-7));
     });
+
+    test('rsPL uses the original NASA lunar-radius ratio', () {
+      addTearDown(() => rsPL.nasa_r = 0);
+      rsPL.nasa_r = 1;
+      // Salem, Oregon, 2017-08-21 total solar eclipse.
+      rsPL.secMax(
+        6450.5,
+        -123.0262 * 3.141592653589793 / 180,
+        44.9429 * 3.141592653589793 / 180,
+        0,
+      );
+
+      expect(rsPL.LX, '全');
+      expect(rsPL.b1, closeTo(1.026574020633769, 1e-8));
+      expect(rsPL.sT[3], closeTo(6442.22118068683, 1e-7));
+      expect(rsPL.sT[4], closeTo(6442.222499303724, 1e-7));
+    });
+
+    test('rsPL retains contacts during polar day', () {
+      // The 2026 eclipse is visible from high Arctic locations in polar day.
+      rsPL.secMax(9719.5, 0, 80 * 3.141592653589793 / 180, 0);
+
+      expect(rsPL.sun_s, 0);
+      expect(rsPL.sun_j, 0);
+      expect(rsPL.LX, isNotEmpty);
+      expect(rsPL.sT[1], greaterThan(9000));
+    });
+
+    test(
+      'rsPL does not overwrite a caller-managed rsGS interpolation table',
+      () {
+        rsGS.init(9719.5, 7);
+        final originalZjd = rsGS.Zjd;
+        final originalFeature = rsGS.feature(9719.5).jd;
+
+        rsPL.secMax(9543.5, 0, 0, 0);
+
+        expect(rsGS.Zjd, originalZjd);
+        expect(rsGS.feature(9719.5).jd, closeTo(originalFeature, 1e-12));
+      },
+    );
 
     test('matches the rounded 2025 PMO total-lunar-eclipse TD table', () {
       ysPL.lecMax(9380.5); // 2025-09-07 total lunar eclipse.
@@ -224,6 +268,14 @@ void main() {
       'stationary, lunar-conjunction, and opposition events keep sxwnl values',
       () {
         expect(
+          xingLiu(Planet.mercury, .26, true),
+          closeTo(.2591139560045104, 1e-10),
+        );
+        expect(
+          xingLiu(Planet.mercury, .26, false),
+          closeTo(.25857560968230875, 1e-10),
+        );
+        expect(
           xingLiu(Planet.jupiter, .26, true),
           closeTo(.25862645897578346, 1e-10),
         );
@@ -235,6 +287,16 @@ void main() {
         final opposition = xingHR(Planet.jupiter, .26, true);
         expect(opposition[0], closeTo(.2602563570552122, 1e-10));
         expect(opposition[1], closeTo(.0045604130455663165, 1e-10));
+      },
+    );
+
+    test(
+      'h2g keeps original longitude normalization and rejects Earth xingHY',
+      () {
+        final geocentric = h2g([0, 0, 1], [3.141592653589793 / 2, 0, 1]);
+        expect(geocentric[0], closeTo(7 * 3.141592653589793 / 4, 1e-12));
+        expect(geocentric[2], closeTo(1.4142135623730951, 1e-12));
+        expect(() => xingHY(Planet.earth, .26), throwsA(isA<ArgumentError>()));
       },
     );
 
