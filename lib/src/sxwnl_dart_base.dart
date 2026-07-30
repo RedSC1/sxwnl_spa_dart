@@ -8,6 +8,7 @@ export 'models/lunar_date.dart';
 export 'models/timepack.dart';
 export 'sxwnl/gan_zhi_calc.dart';
 export 'sxwnl/solar_lunar_pos.dart' show sALon, eLon, mLon;
+export 'sxwnl/eclipse.dart';
 export 'sxwnl/ssq.dart';
 export 'sxwnl/true_solar_time.dart';
 export 'sxwnl/festivals.dart';

@@ -29,10 +29,21 @@ double gxcSunLon(double t) {
   return (-20.49552 * (1 + e * math.cos(v))) / rad; // 黄经光行差
 }
 
+/// 太阳黄纬光行差。
+///
+/// sxwnl 原函数名：gxc_sunLat(t)。原实现恒为 0。
+double gxcSunLat(double _) => 0.0;
+
 /// 月球黄经光行差。
 ///
 /// 原函数名：gxc_moonLon(t)
 double gxcMoonLon(double t) => -3.4e-6;
+
+/// 月球黄纬光行差。
+///
+/// 原函数名：gxc_moonLat(t)。
+double gxcMoonLat(double t) =>
+    0.063 * math.sin(0.057 + 8433.4662 * t + 0.000064 * t * t) / rad;
 
 // ==================== XL0: 行星坐标计算 ====================
 

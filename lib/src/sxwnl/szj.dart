@@ -1,3 +1,5 @@
+// ignore_for_file: non_constant_identifier_names
+
 /// 日月升中天降 (SZJ - Sun & Moon Rise/Transit/Set) 计算。
 ///
 /// 移植自寿星万年历 (sxwnl) eph.js。

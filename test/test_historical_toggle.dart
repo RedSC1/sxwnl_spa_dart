@@ -1,4 +1,6 @@
 
+// ignore_for_file: non_constant_identifier_names
+
 import 'package:sxwnl_spa_dart/src/sxwnl/ssq.dart';
 
 void main() {

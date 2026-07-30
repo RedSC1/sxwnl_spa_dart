@@ -32,6 +32,11 @@ const double csREar = 6378.1366;
 /// 地球平均半径 (千米)
 const double csREarA = 0.99834 * csREar;
 
+/// 月球平均赤道视半径常数（弧度 × 千米）。
+///
+/// 原常量名：cs_sMoon。
+final double csSMoon = 0.2725076 * csREar * 1.0000036 * rad;
+
 /// 地球极赤半径比
 const double csBa = 0.99664719;
 

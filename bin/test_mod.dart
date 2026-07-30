@@ -1,3 +1,5 @@
+// ignore_for_file: non_constant_identifier_names
+
 import 'dart:math' as math;
 import '../lib/src/sxwnl/math_utils.dart';
 import '../lib/src/sxwnl/nutation.dart';
