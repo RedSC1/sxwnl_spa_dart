@@ -238,12 +238,11 @@ void main() {
       },
     );
 
-    test('2003 Mars opposition agrees with the Taiyin Swiss reference', () {
-      // Taiyin documents Swiss Ephemeris 2.10.03 as
-      // 2003-08-28 17:58:47.166 UTC (JD 2452880.249157014).
-      const taiyinSwissUtc = 2452880.249157014;
-      final initialT =
-          (taiyinSwissUtc - 2451545 + dtT(taiyinSwissUtc - 2451545)) / 36525;
+    test('2003 Mars opposition agrees with the SEDS external oracle', () {
+      // SEDS Mars 2003: 2003-08-28 17:58:49 UTC (JD 2452880.249178241).
+      // This is also the external reference used by taiyin-ephemeris.
+      const sedsUtc = 2452880.249178241;
+      final initialT = (sedsUtc - 2451545 + dtT(sedsUtc - 2451545)) / 36525;
       final event = xingHR(Planet.mars, initialT, true);
 
       // First preserve the sxwnl port itself; xingHR returns TT centuries.
@@ -251,7 +250,7 @@ void main() {
 
       // Then compare on the civil-time scale used by the external reference.
       final sxwnlUtc = event[0] * 36525 + 2451545 - dtT(event[0] * 36525);
-      expect((sxwnlUtc - taiyinSwissUtc) * 86400, closeTo(1.60, .1));
+      expect((sxwnlUtc - sedsUtc) * 86400, closeTo(-.23, .1));
     });
   });
 }
