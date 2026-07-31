@@ -132,6 +132,88 @@ void main() {
       expect(nextMonth.day, 1);
     });
 
+    test('朔、上弦、望、下弦 match the PMO 2026 phase table', () {
+      // 官方表只发布到分钟；计算结果保留秒及秒的小数部分，因此按
+      // 60 秒以内核对，而不把官方打印分钟当作秒级真值。
+      const expected = <_MoonPhaseOracle>[
+        _MoonPhaseOracle('望', 2026, 1, 3, 18, 3),
+        _MoonPhaseOracle('下弦', 2026, 1, 10, 23, 48),
+        _MoonPhaseOracle('朔', 2026, 1, 19, 3, 52),
+        _MoonPhaseOracle('上弦', 2026, 1, 26, 12, 47),
+        _MoonPhaseOracle('望', 2026, 2, 2, 6, 9),
+        _MoonPhaseOracle('下弦', 2026, 2, 9, 20, 43),
+        _MoonPhaseOracle('朔', 2026, 2, 17, 20, 1),
+        _MoonPhaseOracle('上弦', 2026, 2, 24, 20, 28),
+        _MoonPhaseOracle('望', 2026, 3, 3, 19, 38),
+        _MoonPhaseOracle('下弦', 2026, 3, 11, 17, 39),
+        _MoonPhaseOracle('朔', 2026, 3, 19, 9, 23),
+        _MoonPhaseOracle('上弦', 2026, 3, 26, 3, 18),
+        _MoonPhaseOracle('望', 2026, 4, 2, 10, 12),
+        _MoonPhaseOracle('下弦', 2026, 4, 10, 12, 52),
+        _MoonPhaseOracle('朔', 2026, 4, 17, 19, 52),
+        _MoonPhaseOracle('上弦', 2026, 4, 24, 10, 32),
+        _MoonPhaseOracle('望', 2026, 5, 2, 1, 23),
+        _MoonPhaseOracle('下弦', 2026, 5, 10, 5, 10),
+        _MoonPhaseOracle('朔', 2026, 5, 17, 4, 1),
+        _MoonPhaseOracle('上弦', 2026, 5, 23, 19, 11),
+        _MoonPhaseOracle('望', 2026, 5, 31, 16, 45),
+        _MoonPhaseOracle('下弦', 2026, 6, 8, 18, 1),
+        _MoonPhaseOracle('朔', 2026, 6, 15, 10, 54),
+        _MoonPhaseOracle('上弦', 2026, 6, 22, 5, 55),
+        _MoonPhaseOracle('望', 2026, 6, 30, 7, 57),
+        _MoonPhaseOracle('下弦', 2026, 7, 8, 3, 29),
+        _MoonPhaseOracle('朔', 2026, 7, 14, 17, 44),
+        _MoonPhaseOracle('上弦', 2026, 7, 21, 19, 6),
+        _MoonPhaseOracle('望', 2026, 7, 29, 22, 36),
+        _MoonPhaseOracle('下弦', 2026, 8, 6, 10, 21),
+        _MoonPhaseOracle('朔', 2026, 8, 13, 1, 37),
+        _MoonPhaseOracle('上弦', 2026, 8, 20, 10, 46),
+        _MoonPhaseOracle('望', 2026, 8, 28, 12, 19),
+        _MoonPhaseOracle('下弦', 2026, 9, 4, 15, 51),
+        _MoonPhaseOracle('朔', 2026, 9, 11, 11, 27),
+        _MoonPhaseOracle('上弦', 2026, 9, 19, 4, 44),
+        _MoonPhaseOracle('望', 2026, 9, 27, 0, 49),
+        _MoonPhaseOracle('下弦', 2026, 10, 3, 21, 25),
+        _MoonPhaseOracle('朔', 2026, 10, 10, 23, 50),
+        _MoonPhaseOracle('上弦', 2026, 10, 19, 0, 13),
+        _MoonPhaseOracle('望', 2026, 10, 26, 12, 12),
+        _MoonPhaseOracle('下弦', 2026, 11, 2, 4, 28),
+        _MoonPhaseOracle('朔', 2026, 11, 9, 15, 2),
+        _MoonPhaseOracle('上弦', 2026, 11, 17, 19, 48),
+        _MoonPhaseOracle('望', 2026, 11, 24, 22, 54),
+        _MoonPhaseOracle('下弦', 2026, 12, 1, 14, 9),
+        _MoonPhaseOracle('朔', 2026, 12, 9, 8, 52),
+        _MoonPhaseOracle('上弦', 2026, 12, 17, 13, 43),
+        _MoonPhaseOracle('望', 2026, 12, 24, 9, 28),
+        _MoonPhaseOracle('下弦', 2026, 12, 31, 2, 59),
+      ];
+
+      final actual = getYearMoonPhases(2026);
+      expect(actual, hasLength(expected.length));
+      for (var i = 0; i < expected.length; i++) {
+        final oracle = expected[i];
+        final result = actual[i];
+        final printed = AstroDateTime(
+          oracle.year,
+          oracle.month,
+          oracle.day,
+          oracle.hour,
+          oracle.minute,
+        );
+        final differenceSeconds =
+            (result.dateTime.toJulianDay() - printed.toJulianDay()).abs() *
+            86400;
+
+        expect(result.name, oracle.name, reason: '第 ${i + 1} 个月相名称');
+        expect(result.dateTime.timeZone, 8.0, reason: '第 ${i + 1} 个月相时区');
+        expect(
+          differenceSeconds,
+          lessThanOrEqualTo(60.0),
+          reason: '第 ${i + 1} 个${oracle.name}应与官方印刷分钟一致',
+        );
+      }
+    });
+
     test('梅雨 and 三伏 dates match the official calendar', () {
       final meiyuCases = <AstroDateTime, String>{
         AstroDateTime(2026, 6, 11): '入梅',
@@ -188,4 +270,22 @@ void main() {
       }
     });
   });
+}
+
+class _MoonPhaseOracle {
+  final String name;
+  final int year;
+  final int month;
+  final int day;
+  final int hour;
+  final int minute;
+
+  const _MoonPhaseOracle(
+    this.name,
+    this.year,
+    this.month,
+    this.day,
+    this.hour,
+    this.minute,
+  );
 }
