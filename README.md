@@ -6,7 +6,7 @@
 >
 > Disclaimer: This project is an AI-assisted implementation for learning/reference only. Accuracy is not guaranteed. Please credit the original algorithm author (SXWNL author: Xu Jianwei) when using this project/package. For commercial use, obtain authorization from the original algorithm author first. Commercial use of this project's code is under the MIT license, but commercial use of the underlying algorithms requires separate permission from the original author; the maintainer assumes no liability for any third-party commercial use.
 
-天文历法计算参考寿星天文历（万年历）[sxwnl](https://github.com/sxwnl/sxwnl)，太阳位置算法参考 [dart-spa](https://github.com/pingbird/dart-spa) 并做了深度适配与调整。
+本项目的农历、节气、日月食、行星、恒星及实时日月位置等主天文历法计算，均以寿星天文历（万年历）[sxwnl](https://github.com/sxwnl/sxwnl) 为原始算法来源并进行 Dart 移植；独立的日出日落、真太阳时和日上中天接口另提供基于 [dart-spa](https://github.com/pingbird/dart-spa) 的 SPA 路径，并做了适配与调整。两套算法不应混用于同一条寿星历法计算链。
 
 ## ✨ 特性
 
