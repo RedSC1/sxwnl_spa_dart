@@ -29,7 +29,7 @@
 
 ```yaml
 dependencies:
-  sxwnl_spa_dart: ^1.0.0
+  sxwnl_spa_dart: ^1.0.1
 ```
 
 > `0.18.1` 起，`LunarDate.lunarYear` 对外语义真正统一为天文纪年（含公元 0 年）。
@@ -608,7 +608,7 @@ The core Chinese-calendar, solar-term, eclipse, planetary, lunar-position, and s
 
 ```yaml
 dependencies:
-  sxwnl_spa_dart: ^1.0.0
+  sxwnl_spa_dart: ^1.0.1
 ```
 
 ### Quick Start

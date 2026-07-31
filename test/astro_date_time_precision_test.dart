@@ -112,6 +112,19 @@ void main() {
       },
     );
 
+    test('compares equality and hash codes by represented instant', () {
+      final utc = AstroDateTime.fromStdJ2000(0);
+      final beijing = AstroDateTime.fromStdJ2000(0, timeZone: 8);
+      final bangkok = beijing.toTimeZone(7);
+      final relabeled = beijing.withTimeZone(7);
+
+      expect(beijing, equals(utc));
+      expect(beijing, equals(bangkok));
+      expect(beijing.hashCode, utc.hashCode);
+      expect(beijing.hashCode, bangkok.hashCode);
+      expect(beijing, isNot(equals(relabeled)));
+    });
+
     test('attaches a proleptic arithmetic Hijri date to BCE DayInfo', () {
       final day = getDayRange(
         AstroDateTime(0, 1, 1),

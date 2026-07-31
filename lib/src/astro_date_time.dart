@@ -331,19 +331,14 @@ class AstroDateTime implements Comparable<AstroDateTime> {
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
+    // Equality follows compareTo()/difference(): a timezone-aware value is
+    // identified by the instant it represents, not by its display fields.
     return other is AstroDateTime &&
-        other.year == year &&
-        other.month == month &&
-        other.day == day &&
-        other.hour == hour &&
-        other.minute == minute &&
-        other.second == second &&
-        other.fractionalSecond == fractionalSecond;
+        toStdJulianDay() == other.toStdJulianDay();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(year, month, day, hour, minute, second, fractionalSecond);
+  int get hashCode => toStdJulianDay().hashCode;
 
   @override
   String toString() {
