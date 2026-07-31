@@ -63,6 +63,7 @@ void main() {
 
 - `fromBJJ2000()`：寿星万年历约定的北京时间 J2000 日数，标记为 `UTC+8`，不再额外偏移。
 - `fromBJJulianDay()`：寿星万年历约定的北京时间绝对 JD，标记为 `UTC+8`。
+- `fromStdJulianDay(jd, timeZone: 8)`：先按标准 UTC+0 绝对 JD 反解，再显示为指定时区并保留标记。
 - `fromStdJ2000(jd, timeZone: 8)`：先按原始 J2000 行为反解，再将显示时间加 8 小时并标记为 `UTC+8`。
 - `toStdJulianDay()` / `toStdJ2000()`：根据对象的 `timeZone` 转回 UTC+0；时区为空时不偏移。
 

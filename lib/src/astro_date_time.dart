@@ -124,6 +124,10 @@ class AstroDateTime implements Comparable<AstroDateTime> {
   ///
   /// **注意：** 本方法仅执行数学转换，不包含时区或 ΔT 修正。
   /// `timeZone` 只是日期表示的可空元数据，不会改变这里的旧行为。
+  ///
+  /// 本方法与旧版 [fromJulianDay] 配套使用。若当前对象是通过
+  /// [fromStdJulianDay] 构造、且需要按其时区还原 UTC+0，请改用
+  /// [toStdJulianDay]。
   double toJulianDay() {
     return _gregorianToJD(year, month, day, hour, minute, preciseSecond);
   }
@@ -146,6 +150,9 @@ class AstroDateTime implements Comparable<AstroDateTime> {
   /// **换算关系：**
   /// `j2kDays = absoluteJD - 2451545.0`
   ///
+  /// 本方法与旧版 [fromJ2000] 配套使用。若当前对象是通过
+  /// [fromStdJ2000] 构造、且需要按其时区还原 UTC+0，请改用
+  /// [toStdJ2000]。
   double toJ2000() {
     return toJulianDay() - j2000;
   }
@@ -167,6 +174,9 @@ class AstroDateTime implements Comparable<AstroDateTime> {
   ///
   /// JD 的日内小数会写入 [fractionalSecond]，不会被截断为整秒。
   /// 该入口保持时区中立，因此返回对象的 [timeZone] 为 `null`。
+  ///
+  /// 如果 [jd] 表示 UTC+0 的标准时刻、且需要把结果显示为某个民用时区，
+  /// 请使用 [fromStdJulianDay]，不要在调用方手动加减时区偏移。
   factory AstroDateTime.fromJulianDay(double jd) {
     return _jdToGregorian(jd);
   }
@@ -180,6 +190,9 @@ class AstroDateTime implements Comparable<AstroDateTime> {
   ///
   /// 输入天数的小数部分会写入 [fractionalSecond]，不会被截断为整秒。
   /// 该入口保持旧的时区中立行为，因此返回对象的 [timeZone] 为 `null`。
+  ///
+  /// 如果 [j2k] 表示 UTC+0 的标准时刻、且需要把结果显示为某个民用时区，
+  /// 请使用 [fromStdJ2000]，不要在调用方手动加减时区偏移。
   factory AstroDateTime.fromJ2000(double j2k) {
     return _jdToGregorian(j2k + j2000);
   }
@@ -201,16 +214,25 @@ class AstroDateTime implements Comparable<AstroDateTime> {
     return AstroDateTime.fromJulianDay(bjJulianDay).withTimeZone(8.0);
   }
 
+  /// 从标准时区（默认 UTC+0）的绝对儒略日构造日期。
+  ///
+  /// 先按 UTC+0 反解，再把显示时间整体加上 [timeZone] 小时，
+  /// 并在结果上保留该时区标记。该入口与 [fromStdJ2000] 的区别仅在于
+  /// 入参使用绝对 JD，而不是 J2000.0 相对日数。
+  factory AstroDateTime.fromStdJulianDay(double jd, {double timeZone = 0.0}) {
+    final result = AstroDateTime.fromJulianDay(
+      jd,
+    ).add(Duration(microseconds: (timeZone * 3600 * 1000000).round()));
+    return result.withTimeZone(timeZone);
+  }
+
   /// 从标准时区（默认 UTC+0）的 J2000 日数构造日期。
   ///
   /// 先按 [fromJ2000] 的原始行为反解，再把显示字段整体加上 [timeZone]
   /// 小时，并在结果上保留该时区标记。该入口适合将标准 UTC JD 显示为
   /// 北京时间等民用时间。
   factory AstroDateTime.fromStdJ2000(double j2k, {double timeZone = 0.0}) {
-    final result = AstroDateTime.fromJ2000(
-      j2k,
-    ).add(Duration(microseconds: (timeZone * 3600 * 1000000).round()));
-    return result.withTimeZone(timeZone);
+    return AstroDateTime.fromStdJulianDay(j2k + j2000, timeZone: timeZone);
   }
 
   // --------------- 与 Dart DateTime 互转 ---------------

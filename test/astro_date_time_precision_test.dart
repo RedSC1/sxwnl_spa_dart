@@ -27,6 +27,10 @@ void main() {
       final utc = AstroDateTime(2025, 1, 1, 0, 0, 0, 0.5);
       final utcJ2000 = utc.toJ2000();
       final local = AstroDateTime.fromStdJ2000(utcJ2000, timeZone: 8);
+      final localAbsolute = AstroDateTime.fromStdJulianDay(
+        utc.toJulianDay(),
+        timeZone: 8,
+      );
 
       expect(AstroDateTime.fromJ2000(utcJ2000).timeZone, isNull);
       expect(AstroDateTime.fromJulianDay(utc.toJulianDay()).timeZone, isNull);
@@ -39,6 +43,8 @@ void main() {
       expect(local.minute, 0);
       expect(local.second, 0);
       expect(local.fractionalSecond, closeTo(0.5, 1e-4));
+      expect(localAbsolute.timeZone, 8.0);
+      expect(localAbsolute.toJulianDay(), closeTo(local.toJulianDay(), 1e-9));
     });
 
     test('fromBJJ2000 does not apply a second Beijing timezone shift', () {
