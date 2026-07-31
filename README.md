@@ -43,9 +43,11 @@ dependencies:
 import 'package:sxwnl_spa_dart/sxwnl_spa_dart.dart';
 
 void main() {
-  final time = AstroDateTime(2023, 1, 22, 12, 0, 0);
+  // 新版入口要求把民用时区随 AstroDateTime 一起携带。
+  final time = AstroDateTime(2023, 1, 22, 12, 0, 0).withTimeZone(8.0);
   final loc = Location(87.6, 43.8);
-  final res = calcTrueSolarTime(time, loc);
+  // SPA 仅用于独立的真太阳时、日出日落和日上中天计算。
+  final res = calcTrueSolarTime2(time, loc, method: SolarCalcMethod.spa);
 
   print('平太阳时 (Mean Solar Time): $time');
   print('真太阳时 (True Solar Time): ${res.trueSolarTime}');
@@ -53,6 +55,11 @@ void main() {
   print('均时差 (Equation of Time): ${res.equationOfTime.inMinutes} 分钟');
 }
 ```
+
+`calcTrueSolarTime2()` 会保留输入的 `UTC+8` 时区标记；若需要与寿星万年历
+原版路径对齐，可将 `method` 改为 `SolarCalcMethod.sxwnl`。旧版
+`calcTrueSolarTime()` 仍保留兼容，但时区通过单独的 `timezone` 参数传入，
+新代码建议使用上面的新版入口。
 
 ### 时间尺度与时区
 
