@@ -659,9 +659,9 @@ For the complete lunar-calendar, timezone, eclipse, and astronomy examples, see 
 
 ## ⚠️ 用途说明 (Scope)
 
-本项目仅用于天文历法计算、历法研究与软件开发，不构成占卜、命理或其他迷信活动的依据。
+本项目用于天文与历法计算、历法研究及软件开发。项目不提供或认可占卜、命理或其他非科学解释，也不对使用者基于计算结果作出的解释、判断或决策负责。
 
-This project is intended only for astronomical-calendar calculations, calendar research, and software development. It is not a basis for divination, fortune-telling, or other superstitious practices.
+This project is intended for astronomical and calendrical calculations, calendar research, and software development. It does not provide or endorse divination, fortune-telling, or other non-scientific interpretations, and is not responsible for decisions or conclusions drawn from its output.
 
 ## 📚 感谢
 
