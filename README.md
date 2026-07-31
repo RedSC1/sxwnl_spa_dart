@@ -657,6 +657,12 @@ For the complete lunar-calendar, timezone, eclipse, and astronomy examples, see 
 
 ---
 
+## ⚠️ 用途说明 (Scope)
+
+本项目仅用于天文历法计算、历法研究与软件开发，不构成占卜、命理或其他迷信活动的依据。
+
+This project is intended only for astronomical-calendar calculations, calendar research, and software development. It is not a basis for divination, fortune-telling, or other superstitious practices.
+
 ## 📚 感谢
 
 *   许剑伟（寿星天文历（万年历）原作者）
