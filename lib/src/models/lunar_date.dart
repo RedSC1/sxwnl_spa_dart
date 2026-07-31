@@ -265,7 +265,7 @@ class LunarDate {
             }
           }
 
-          return AstroDateTime.fromJ2000(result.hs[i] + (day - 1));
+          return AstroDateTime.fromBJJ2000(result.hs[i] + (day - 1));
         }
       }
     }
@@ -345,7 +345,7 @@ class LunarDate {
         : result.hs.length - 1;
     final endJd = result.hs[endIndex];
     final mid = (startJd + endJd) / 2;
-    return AstroDateTime.fromJ2000(mid).year;
+    return AstroDateTime.fromBJJ2000(mid).year;
   }
 
   // 对普通历法与公元后改历窗口，年界仍然由“显示为正月的那个月”决定，
@@ -355,7 +355,7 @@ class LunarDate {
     final startJd = result.hs[zhengYueIndex];
     final endJd = _findNextDisplayedZhengStart(result, zhengYueIndex) ?? (startJd + 180);
     final mid = (startJd + endJd) / 2;
-    return AstroDateTime.fromJ2000(mid).year;
+    return AstroDateTime.fromBJJ2000(mid).year;
   }
 
   static double? _findNextDisplayedZhengStart(dynamic result, int zhengYueIndex) {

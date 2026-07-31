@@ -11,10 +11,26 @@ library;
 
 import 'dart:math' as math;
 
+import '../astro_date_time.dart';
 import 'delta_t.dart';
 import 'math_utils.dart';
 import 'nutation.dart';
 import 'solar_lunar_pos.dart';
+
+String _rad2str2(double value) {
+  final sign = value < 0 ? '-' : '+';
+  final degrees = value.abs() * 180 / math.pi;
+  var minutes = (degrees - degrees.floor()) * 60;
+  var degreePart = degrees.floor();
+  var minutePart = minutes.round();
+  if (minutePart >= 60) {
+    minutePart = 0;
+    degreePart++;
+  }
+  return '$sign${degreePart.toString().padLeft(3, '0')}°${minutePart.toString().padLeft(2, '0')}\'';
+}
+
+String _jdText(double jd) => AstroDateTime.fromJulianDay(jd).toString();
 
 class _LecPoint {
   double x = 0;
@@ -357,31 +373,6 @@ EcFastResult ecFast(double jd) {
   return re;
 }
 
-double _mqc(double h) => .0002967 / math.tan(h + .003138 / (h + .08919));
-
-void _parallax(
-  List<double> z,
-  double hourAngle,
-  double latitude,
-  double elevationKm,
-) {
-  final distanceScale = z[2] < 500 ? csAU : 1.0;
-  z[2] *= distanceScale;
-  final u = math.atan(csBa * math.tan(latitude));
-  final g = z[0] + hourAngle;
-  final r0 = csREar * math.cos(u) + elevationKm * math.cos(latitude);
-  final z0 = csREar * math.sin(u) * csBa + elevationKm * math.sin(latitude);
-  final observerX = r0 * math.cos(g);
-  final observerY = r0 * math.sin(g);
-  final body = _llr2xyz(z);
-  final corrected = _xyz2llr(
-    _Vec3(body.x - observerX, body.y - observerY, body.z - z0),
-  );
-  z[0] = corrected[0];
-  z[1] = corrected[1];
-  z[2] = corrected[2] / distanceScale;
-}
-
 List<double> _lineEar(List<double> p, List<double> q, double gst) {
   final a = _llr2xyz(p);
   final b = _llr2xyz(q);
@@ -404,40 +395,6 @@ List<double> _lineEar(List<double> p, List<double> q, double gst) {
     rad2rrad(math.atan2(y, x) - gst),
     math.atan(z / csBa2 / math.sqrt(x * x + y * y)),
   ];
-}
-
-double _moonIll(double t) {
-  final t2 = t * t;
-  final t3 = t2 * t;
-  final t4 = t3 * t;
-  const deg = math.pi / 180;
-  final d =
-      (297.8502042 +
-          445267.1115168 * t -
-          .0016300 * t2 +
-          t3 / 545868 -
-          t4 / 113065000) *
-      deg;
-  final m =
-      (357.5291092 + 35999.0502909 * t - .0001536 * t2 + t3 / 24490000) * deg;
-  final moonM =
-      (134.9634114 +
-          477198.8676313 * t +
-          .0089970 * t2 +
-          t3 / 69699 -
-          t4 / 14712000) *
-      deg;
-  final phase =
-      math.pi -
-      d +
-      (-6.289 * math.sin(moonM) +
-              2.100 * math.sin(m) -
-              1.274 * math.sin(2 * d - moonM) -
-              .658 * math.sin(2 * d) -
-              .214 * math.sin(2 * moonM) -
-              .110 * math.sin(d)) *
-          deg;
-  return (1 + math.cos(phase)) / 2;
 }
 
 /// 日月实时位置计算器。
@@ -520,7 +477,7 @@ class Msc {
     mCJ = z[0];
     mCW = z[1];
     mShiJ = rad2rrad(gst + L - z[0]);
-    _parallax(z, mShiJ, fa, elevationKm);
+    parallax(z, mShiJ, fa, elevationKm);
     mCJ2 = z[0];
     mCW2 = z[1];
     mR2 = z[2];
@@ -529,7 +486,7 @@ class Msc {
     z[0] = rad2mrad(-math.pi / 2 - z[0]);
     mDJ = z[0];
     mDW = z[1];
-    if (z[1] > 0) z[1] += _mqc(z[1]);
+    if (z[1] > 0) z[1] += MQC(z[1]);
     mPJ = z[0];
     mPW = z[1];
 
@@ -543,7 +500,7 @@ class Msc {
     sCJ = z[0];
     sCW = z[1];
     sShiJ = rad2rrad(gst + L - z[0]);
-    _parallax(z, sShiJ, fa, elevationKm);
+    parallax(z, sShiJ, fa, elevationKm);
     sCJ2 = z[0];
     sCW2 = z[1];
     sR2 = z[2];
@@ -552,7 +509,7 @@ class Msc {
     z[0] = rad2mrad(-math.pi / 2 - z[0]);
     sDJ = z[0];
     sDW = z[1];
-    if (z[1] > 0) z[1] += _mqc(z[1]);
+    if (z[1] > 0) z[1] += MQC(z[1]);
     sPJ = z[0];
     sPW = z[1];
 
@@ -581,7 +538,7 @@ class Msc {
     eMRad = csSMoon / mR;
     eShadow = (csREarA / mR * rad - (959.63 - 8.794) / sR) * 51 / 50;
     eShadow2 = (csREarA / mR * rad + (959.63 + 8.794) / sR) * 51 / 50;
-    mIll = _moonIll(t);
+    mIll = moonIll(t);
     if (rad2rrad(mCJ - sCJ).abs() < 50 * math.pi / 180) {
       final center = _lineEar([mCJ, mCW, mR], [sCJ, sCW, sR * csAU], gst);
       zxJ = center[0];
@@ -698,6 +655,22 @@ class RsGSFeature {
   List<double> L4 = [];
   List<double> L5 = [];
   List<double> L6 = [];
+}
+
+/// `rsGS.jieX2()` 返回的全球日食闭合曲线。
+///
+/// 每个字段都是扁平的 `[经度, 纬度, ...]` 弧度数组，首尾点相同，分别表示
+/// 本影、半影和晨昏圈。原版对象字段名保留为 `p1`、`p2`、`p3`。
+class RsGSBoundaryResult {
+  final List<double> p1;
+  final List<double> p2;
+  final List<double> p3;
+
+  const RsGSBoundaryResult({
+    this.p1 = const [],
+    this.p2 = const [],
+    this.p3 = const [],
+  });
 }
 
 _Vec3 _llr2xyz(List<double> z) {
@@ -1322,6 +1295,137 @@ class RsGS {
     return re;
   }
 
+  /// 生成某一时刻的全球日食闭合边界曲线。
+  ///
+  /// 对应寿星原版 `rsGS.jieX2(jd)`。调用前应先用 [init] 建立 7 点
+  /// Bessel 插值表；[jd] 与插值中心相差超过半天时，按原版返回空结果。
+  RsGSBoundaryResult jieX2(double jd) {
+    if ((jd - Zjd).abs() > .5) return const RsGSBoundaryResult();
+
+    final p1 = <double>[];
+    final p2 = <double>[];
+    final p3 = <double>[];
+    final sunPosition = sun(jd);
+    final moonPosition = _bseM(jd);
+    final shadow = _rSM(moonPosition[2]);
+    final frame = _frame(jd);
+    final moonZ = moonPosition[2];
+    final a0 =
+        moonPosition[0] * moonPosition[0] + moonPosition[1] * moonPosition[1];
+    final a1 = a0 - shadow.r2 * shadow.r2;
+    final a2 = a0 - shadow.r1 * shadow.r1;
+    const n = 200;
+    const moonRadius = .2725076;
+
+    for (var index = 0; index < n; index++) {
+      final angle = index / n * pi2;
+      final cosAngle = math.cos(angle);
+      final sinAngle = math.sin(angle);
+      final xMoon = moonPosition[0] + moonRadius * cosAngle;
+      final yMoon = moonPosition[1] + moonRadius * sinAngle;
+
+      // 本影边界。
+      var x = moonPosition[0] + shadow.r2 * cosAngle;
+      var y = moonPosition[1] + shadow.r2 * sinAngle;
+      var point = _lineEar2(
+        _Vec3(xMoon, yMoon, moonZ),
+        _Vec3(x, y, 0),
+        csBa,
+        1,
+        frame,
+      );
+      if (point.valid) {
+        _push([point.j, point.w], p1);
+      } else if (x * x + y * y > a1) {
+        final fallback = _bse2db(_Vec3(x, y, 0), frame);
+        _push(fallback, p1);
+      }
+
+      // 半影边界。
+      x = moonPosition[0] + shadow.r1 * cosAngle;
+      y = moonPosition[1] + shadow.r1 * sinAngle;
+      point = _lineEar2(
+        _Vec3(xMoon, yMoon, moonZ),
+        _Vec3(x, y, 0),
+        csBa,
+        1,
+        frame,
+      );
+      if (point.valid) {
+        _push([point.j, point.w], p2);
+      } else if (x * x + y * y > a2) {
+        final fallback = _bse2db(_Vec3(x, y, 0), frame);
+        _push(fallback, p2);
+      }
+
+      // 晨昏圈。
+      final terminator = llrConv([angle, 0, 0], piHalf - sunPosition[1]);
+      terminator[0] = rad2rrad(
+        terminator[0] + sunPosition[0] + piHalf - frame.gst,
+      );
+      _push(terminator, p3);
+    }
+
+    void close(List<double> line) {
+      if (line.length >= 2) {
+        line
+          ..add(line[0])
+          ..add(line[1]);
+      }
+    }
+
+    close(p1);
+    close(p2);
+    close(p3);
+    return RsGSBoundaryResult(p1: p1, p2: p2, p3: p3);
+  }
+
+  /// 生成寿星原版格式的全球日食逐分钟界线表。
+  ///
+  /// 对应 `rsGS.jieX3(jd)`，返回 HTML `<pre>` 文本；每行依次为时间、半影
+  /// 北界、本影北界、中心线、本影南界和半影南界。计算坐标仍为弧度，时间
+  /// 保持寿星原版的力学时语义。
+  String jieX3(double jd) {
+    final featureResult = feature(jd);
+    var time = (featureResult.jd * 1440).floor() / 1440 - 3 / 24;
+    const step = 1 / 1440;
+    final rows = <String>[];
+
+    for (var index = 0; index < 360; index++, time += step) {
+      final vx =
+          featureResult.vx + featureResult.ax * (time - featureResult.jdSuo);
+      final vy =
+          featureResult.vy + featureResult.ay * (time - featureResult.jdSuo);
+      final moonPosition = _bseM(time);
+      final shadow = _rSM(moonPosition[2]);
+      final frame = _frame(time);
+      var validCount = 0;
+      final cells = <String>[];
+
+      void addBoundary(List<double> point) {
+        if (point.length >= 2 && point[1] != 100) {
+          cells.add('${_rad2str2(point[0])} ${_rad2str2(point[1])}');
+          validCount++;
+        } else {
+          cells.add('-------------------');
+        }
+      }
+
+      addBoundary(_nanbei(moonPosition, vx, vy, 1, shadow.r1, frame));
+      addBoundary(_nanbei(moonPosition, vx, vy, 1, shadow.r2, frame));
+      final center = _bseXY2db(moonPosition[0], moonPosition[1], frame);
+      addBoundary(center.valid ? [center.j, center.w] : [100, 100]);
+      addBoundary(_nanbei(moonPosition, vx, vy, -1, shadow.r2, frame));
+      addBoundary(_nanbei(moonPosition, vx, vy, -1, shadow.r1, frame));
+
+      if (validCount != 0) {
+        rows.add('${_jdText(time + j2000)} ${cells.join('|')}');
+      }
+    }
+
+    return '<pre>时间(力学时) 半影北界限 本影北界线 中心线 本影南界线 半影南界线，(伪本影南北界应互换)<br>${rows.join('<br>')}</pre>';
+  }
+
   static int _suoN(double jd) => ((jd + 8) / 29.5306).floor();
 }
 
@@ -1347,6 +1451,18 @@ class RsPLPoint {
   double x = 0;
   double y = 0;
   double t = 0;
+}
+
+/// `rsPL.nbj()` 使用的相邻时刻日月坐标。
+class RsPLBesselPoint {
+  List<double> S = [];
+  List<double> M = [];
+  double g = 0;
+  double mr = 0;
+  double sr = 0;
+  double x = 0;
+  double y = 0;
+  String c = '';
 }
 
 /// 寿星原版 `rsPL` 的地方日食计算器。
@@ -1376,6 +1492,23 @@ class RsPL {
   double sun_s = 0;
   double sun_j = 0;
 
+  /// 本影、半影锥顶点坐标，供 `zb0()` / `nbj()` 结果检查使用。
+  List<double> A = [];
+  List<double> B = [];
+
+  /// 南北界计算使用的前后两个时刻坐标。
+  RsPLBesselPoint P = RsPLBesselPoint();
+  RsPLBesselPoint Q = RsPLBesselPoint();
+
+  /// `nbj()` 返回的食界表：中心、 本影北/南界、半影北/南界。
+  List<double> V = List<double>.filled(10, 100);
+
+  /// 食中心类型：`全`、`环` 或空字符串。
+  String Vc = '';
+
+  /// 本影南北界的粗略距离（沿用原版中文字符串）。
+  String Vb = '';
+
   void secXY(double jd, double L, double fa, double high, RsPLPoint re) {
     final deltaT = dtT(jd);
     final zd = nutation2(jd / 36525);
@@ -1387,7 +1520,7 @@ class RsPL {
       ..mCJ = z[0]
       ..mCW = z[1]
       ..mR = z[2];
-    _parallax(z, rad2rrad(gst + L - z[0]), fa, high);
+    parallax(z, rad2rrad(gst + L - z[0]), fa, high);
     re
       ..mCJ2 = z[0]
       ..mCW2 = z[1]
@@ -1398,7 +1531,7 @@ class RsPL {
       ..sCJ = z[0]
       ..sCW = z[1]
       ..sR = z[2];
-    _parallax(z, rad2rrad(gst + L - z[0]), fa, high);
+    parallax(z, rad2rrad(gst + L - z[0]), fa, high);
     re
       ..sCJ2 = z[0]
       ..sCW2 = z[1]
@@ -1422,6 +1555,143 @@ class RsPL {
     var d = math.sqrt(d0);
     if (!end) d = -d;
     return g.t + ((-bb + d) / a - g.x) / v;
+  }
+
+  void _zb0(double jd) {
+    final deltaT = dtT(jd);
+    final e = hcjj(jd / 36525);
+    final zd = nutation2(jd / 36525);
+    P.g = pGst(jd - deltaT, deltaT) + zd[0] * math.cos(e + zd[1]);
+    P.S = _rsGS.sun(jd);
+    P.M = _rsGS.moon(jd);
+
+    final nextJd = jd + 60 / 86400;
+    // 原版这里沿用同一 dT 计算恒星时，保持寿星数值行为。
+    Q.g = pGst(nextJd - deltaT, deltaT) + zd[0] * math.cos(e + zd[1]);
+    Q.S = _rsGS.sun(nextJd);
+    Q.M = _rsGS.moon(nextJd);
+
+    final sunVector = _llr2xyz(P.S);
+    final moonVector = _llr2xyz(P.M);
+    final radiusRatio = 959.63 / csSMoon * csAU;
+
+    final umbra = _Vec3(
+      (sunVector.x - moonVector.x) / (1 - radiusRatio) + moonVector.x,
+      (sunVector.y - moonVector.y) / (1 - radiusRatio) + moonVector.y,
+      (sunVector.z - moonVector.z) / (1 - radiusRatio) + moonVector.z,
+    );
+    A = _xyz2llr(umbra);
+
+    final penumbra = _Vec3(
+      (sunVector.x - moonVector.x) / (1 + radiusRatio) + moonVector.x,
+      (sunVector.y - moonVector.y) / (1 + radiusRatio) + moonVector.y,
+      (sunVector.z - moonVector.z) / (1 + radiusRatio) + moonVector.z,
+    );
+    B = _xyz2llr(penumbra);
+  }
+
+  void _zbXY(RsPLBesselPoint point, double longitude, double latitude) {
+    final sunPosition = List<double>.from(point.S);
+    final moonPosition = List<double>.from(point.M);
+    parallax(sunPosition, point.g + longitude - point.S[0], latitude, 0);
+    parallax(moonPosition, point.g + longitude - point.M[0], latitude, 0);
+    point.mr = csSMoon / moonPosition[2] / rad;
+    point.sr = 959.63 / sunPosition[2] / rad * csAU;
+    point.x =
+        rad2rrad(moonPosition[0] - sunPosition[0]) *
+        math.cos((moonPosition[1] + sunPosition[1]) / 2);
+    point.y = moonPosition[1] - sunPosition[1];
+  }
+
+  void _p2p(
+    double longitude,
+    double latitude,
+    RsPLBesselPoint result,
+    bool useUmbra,
+    int direction,
+  ) {
+    _zbXY(P, longitude, latitude);
+    _zbXY(Q, longitude, latitude);
+
+    final u = Q.y - P.y;
+    final v = Q.x - P.x;
+    final speed = math.sqrt(u * u + v * v);
+    final radius = 959.63 / P.S[2] / rad * csAU;
+    final w = P.S[1] + direction * radius * v / speed;
+    final j =
+        P.S[0] - direction * radius * u / speed / math.cos((w + P.S[1]) / 2);
+    final target = useUmbra ? A : B;
+    final point = _lineEar([j, w, P.S[2]], target, P.g);
+    result
+      ..x = point[0]
+      ..y = point[1];
+  }
+
+  void _pp0(RsPLBesselPoint result) {
+    final point = _lineEar(P.M, P.S, P.g);
+    result
+      ..x = point[0]
+      ..y = point[1];
+    if (result.y == 100) {
+      result.c = '';
+      return;
+    }
+    result.c = '全';
+    _zbXY(P, result.x, result.y);
+    if (P.sr > P.mr) result.c = '环';
+  }
+
+  /// 计算地方日食食中心及本影/半影南北界。
+  ///
+  /// 对应寿星原版 `rsPL.nbj(jd)`。输入为 J2000.0 起算的 TT/TD 日数；
+  /// 结果写入 [V]、[Vc]、[Vb]，其中经纬度均为弧度，`100` 表示无解。
+  void nbj(double jd) {
+    _rsGS.init(jd, 7);
+    V = List<double>.filled(10, 100);
+    Vc = '';
+    Vb = '';
+    _zb0(jd);
+
+    final center = RsPLBesselPoint();
+    _pp0(center);
+    V[0] = center.x;
+    V[1] = center.y;
+    Vc = center.c;
+
+    final boundary = RsPLBesselPoint();
+    boundary.x = boundary.y = 0;
+    for (var i = 0; i < 2; i++) {
+      _p2p(boundary.x, boundary.y, boundary, true, 1);
+    }
+    V[2] = boundary.x;
+    V[3] = boundary.y;
+
+    boundary.x = boundary.y = 0;
+    for (var i = 0; i < 2; i++) {
+      _p2p(boundary.x, boundary.y, boundary, true, -1);
+    }
+    V[4] = boundary.x;
+    V[5] = boundary.y;
+
+    boundary.x = boundary.y = 0;
+    for (var i = 0; i < 3; i++) {
+      _p2p(boundary.x, boundary.y, boundary, false, -1);
+    }
+    V[6] = boundary.x;
+    V[7] = boundary.y;
+
+    boundary.x = boundary.y = 0;
+    for (var i = 0; i < 3; i++) {
+      _p2p(boundary.x, boundary.y, boundary, false, 1);
+    }
+    V[8] = boundary.x;
+    V[9] = boundary.y;
+
+    if (V[3] != 100 && V[5] != 100) {
+      final x = (V[2] - V[4]) * math.cos((V[3] + V[5]) / 2);
+      final y = V[3] - V[5];
+      Vb = '${(csREarA * math.sqrt(x * x + y * y)).round()}千米';
+    }
   }
 
   /// 计算一个地点的日食接触时刻和食甚参数。
@@ -1510,7 +1780,7 @@ class RsPL {
         sT[0] = lineT(g2, v, u, g2.mr + g2.sr, false);
       }
       P1 = rad2mrad(math.atan2(g2.x, g2.y));
-      V1 = rad2mrad(P1 - _shiChaJ(_pGst2(sT[0]), L, fa, g2.sCJ, g2.sCW));
+      V1 = rad2mrad(P1 - shiChaJ(pGST2(sT[0]), L, fa, g2.sCJ, g2.sCW));
 
       sT[2] = lineT(g, v, u, g.mr + g.sr, true);
       for (var i = 0; i < 3; i++) {
@@ -1518,7 +1788,7 @@ class RsPL {
         sT[2] = lineT(g2, v, u, g2.mr + g2.sr, true);
       }
       P2 = rad2mrad(math.atan2(g2.x, g2.y));
-      V2 = rad2mrad(P2 - _shiChaJ(_pGst2(sT[2]), L, fa, g2.sCJ, g2.sCW));
+      V2 = rad2mrad(P2 - shiChaJ(pGST2(sT[2]), L, fa, g2.sCJ, g2.sCW));
     }
 
     void innerContacts(double radius, String kind) {
@@ -1569,17 +1839,24 @@ class RsPL {
   }
 }
 
-double _shiChaJ(double gst, double lon, double lat, double ra, double dec) {
+/// 视差角（不是视差）。
+///
+/// 原函数名：`shiChaJ(gst, L, fa, J, W)`。
+double shiChaJ(double gst, double lon, double lat, double ra, double dec) {
   final h = gst + lon - ra;
-  return math.atan2(
-    math.sin(h),
-    math.tan(lat) * math.cos(dec) - math.sin(dec) * math.cos(h),
+  return rad2mrad(
+    math.atan2(
+      math.sin(h),
+      math.tan(lat) * math.cos(dec) - math.sin(dec) * math.cos(h),
+    ),
   );
 }
 
-double _pGst2(double jd) {
-  final deltaT = dtT(jd);
-  return pGst(jd - deltaT, deltaT);
+/// 原版 `sunShengJ()` 的太阳升降快速计算。
+///
+/// 返回 J2000.0 起算的 UT 日数；极昼和极夜均按原版返回 `0`。
+double sunShengJ(double jd, double lon, double lat, int direction) {
+  return _sunShengJ(jd, lon, lat, direction) ?? 0;
 }
 
 double? _sunShengJ(double jd, double lon, double lat, int direction) {

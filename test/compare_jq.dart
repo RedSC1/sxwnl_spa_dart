@@ -67,7 +67,7 @@ List<double> _collectYearSuo(int year) {
 }
 
 String _jdToStr(double jd) {
-  return AstroDateTime.fromJ2000(jd).toString();
+  return AstroDateTime.fromBJJ2000(jd).toString();
 }
 
 List<int> _sampleYears(int start, int end, int count) {

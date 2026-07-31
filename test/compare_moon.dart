@@ -17,13 +17,13 @@ List<double> _collectYearMoonPhases(int year) {
   final candidates = <double>[];
   final y = year - 2000;
   final n0 = (y * (365.2422 / 29.53058886)).floor();
-  
+
   for (var i = -3; i < 60; i++) {
     final w = (n0 + i * 0.25) * 2 * pi;
     final jd = _suoAccurate(w);
     candidates.add(jd);
   }
-  
+
   candidates.sort();
   final unique = <double>[];
   for (final v in candidates) {
@@ -53,7 +53,7 @@ void main() {
       .toList();
 
   print('=== 月相计算对账报告 ($startYear - $endYear) ===');
-  
+
   double sumDiff = 0;
   double maxDiff = 0;
   int total = 0;
@@ -85,13 +85,13 @@ void main() {
   print('最大误差: ${maxDiff.toStringAsFixed(4)} 秒');
   print('秒级完全一致: $exact');
   print('误差大于1秒: $gt1s');
-  
+
   print('\n示例对比 (2026年3月):');
   final sampleYear = 2026;
   final js2026 = jsMoonPhases[sampleYear - startYear];
   final dart2026 = _collectYearMoonPhases(sampleYear);
   for(int i=0; i<min(js2026.length, dart2026.length); i++){
-    final dt = AstroDateTime.fromJ2000(dart2026[i]);
+    final dt = AstroDateTime.fromBJJ2000(dart2026[i]);
     if (dt.month == 3) {
       print('JS: ${js2026[i].toStringAsFixed(8)} | Dart: ${dart2026[i].toStringAsFixed(8)} | 差: ${((dart2026[i]-js2026[i])*86400).toStringAsFixed(2)}s | ${dt}');
     }

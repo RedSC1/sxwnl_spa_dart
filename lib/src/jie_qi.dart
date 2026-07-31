@@ -205,7 +205,7 @@ JieQiResult _slotToResult(int slot) {
     index: idx,
     name: jieQiNames[idx],
     jd: jd,
-    dateTime: AstroDateTime.fromJ2000(jd),
+    dateTime: AstroDateTime.fromBJJ2000(jd),
   );
 }
 
@@ -272,7 +272,7 @@ List<JieQiResult> getYearJieQi(int year) {
         index: index,
         name: jieQiNames[index],
         jd: jd,
-        dateTime: AstroDateTime.fromJ2000(jd),
+        dateTime: AstroDateTime.fromBJJ2000(jd),
       ),
     );
   }

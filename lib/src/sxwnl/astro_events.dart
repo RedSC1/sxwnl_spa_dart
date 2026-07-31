@@ -3,7 +3,6 @@ library;
 
 import 'dart:math' as math;
 import 'package:sxwnl_spa_dart/src/sxwnl_dart_base.dart';
-import 'package:sxwnl_spa_dart/src/jie_qi.dart';
 
 class MoonPhaseResult {
   final String name;
@@ -33,46 +32,86 @@ const List<String> moonPhaseNames8 = [
 ];
 
 class AstroEvents {
-  /// ### 获取指定日期发生的精确月相
+  /// 获取时间范围内发生的精确月相。
   ///
-  /// 弃用日历级函数，改用物理级 [soAccurate] 反推秒级时刻。
+  /// 时间范围采用半开区间 `[start, end)`，日期字段按寿星万年历的北京
+  /// 时间约定解释。默认返回朔、上弦、望、下弦四个主月相；设置
+  /// [use8Phases] 后，会返回八个 45° 月相节点。
+  static List<MoonPhaseResult> getMoonPhases(
+    AstroDateTime start,
+    AstroDateTime end, {
+    bool use8Phases = false,
+  }) {
+    final startJd = start.toJ2000();
+    final endJd = end.toJ2000();
+    if (endJd <= startJd) return const [];
+
+    final names = use8Phases ? moonPhaseNames8 : moonPhaseNames4;
+    final count = names.length;
+    final step = 1.0 / count;
+
+    // 朔望月平均长度约 29.53 日。两端各多搜索两个周期，覆盖边界
+    // 处的相位反解误差，也避免季度相位落在估算月序的相邻周期内。
+    final firstMonth = ((startJd - 6) / 29.5306).floor() - 2;
+    final lastMonth = ((endJd - 6) / 29.5306).ceil() + 2;
+    final results = <MoonPhaseResult>[];
+
+    for (var month = firstMonth; month <= lastMonth; month++) {
+      for (var i = 0; i < count; i++) {
+        final w = (month + i * step) * 2 * math.pi;
+        final phaseJD = soAccurate(w);
+        if (phaseJD < startJd || phaseJD >= endJd) continue;
+        results.add(
+          MoonPhaseResult(
+            name: names[i],
+            jd: phaseJD,
+            dateTime: AstroDateTime.fromBJJ2000(phaseJD),
+          ),
+        );
+      }
+    }
+
+    results.sort((a, b) => a.jd.compareTo(b.jd));
+    final unique = <MoonPhaseResult>[];
+    for (final result in results) {
+      if (unique.isEmpty || (result.jd - unique.last.jd).abs() > 1e-9) {
+        unique.add(result);
+      }
+    }
+    return List<MoonPhaseResult>.unmodifiable(unique);
+  }
+
+  /// 获取指定公历年的全部月相。
+  ///
+  /// 返回该年北京时间 1 月 1 日（含）至次年 1 月 1 日（不含）之间的
+  /// 月相，顺序按发生时刻排列。
+  static List<MoonPhaseResult> getYearMoonPhases(
+    int year, {
+    bool use8Phases = false,
+  }) {
+    return getMoonPhases(
+      AstroDateTime(year, 1, 1),
+      AstroDateTime(year + 1, 1, 1),
+      use8Phases: use8Phases,
+    );
+  }
+
+  /// 获取指定公历日发生的精确月相。
+  ///
+  /// 这是对单日 `[start, end)` 范围搜索的便捷封装，底层仍使用
+  /// [soAccurate] 反推秒级时刻。
   static MoonPhaseResult? getMoonPhase(
     AstroDateTime targetDate, {
     bool use8Phases = false,
   }) {
-    final names = use8Phases ? moonPhaseNames8 : moonPhaseNames4;
-    final count = names.length;
-    final step = 1.0 / count;
-    final jd = targetDate.toJ2000();
-
-    // 估算当前月序
-    int n = ((jd - 6) / 29.5306).floor();
-
-    // 检查前后月份，确保不漏掉跨天的相位
-    for (int monthOffset = -1; monthOffset <= 1; monthOffset++) {
-      int currentN = n + monthOffset;
-      for (int i = 0; i < count; i++) {
-        // W 是累计弧度（相位点）
-        double W = (currentN + i * step) * 2 * math.pi;
-
-        // 【高精度修正】：直接调用底层的牛顿迭代定朔
-        double phaseJD = soAccurate(W);
-
-        final phaseDate = AstroDateTime.fromJ2000(phaseJD);
-
-        // 只有时刻落在目标日期内才返回
-        if (phaseDate.year == targetDate.year &&
-            phaseDate.month == targetDate.month &&
-            phaseDate.day == targetDate.day) {
-          return MoonPhaseResult(
-            name: names[i],
-            jd: phaseJD,
-            dateTime: phaseDate,
-          );
-        }
-      }
-    }
-    return null;
+    final dayStart = AstroDateTime(
+      targetDate.year,
+      targetDate.month,
+      targetDate.day,
+    );
+    final dayEnd = dayStart.add(const Duration(days: 1));
+    final phases = getMoonPhases(dayStart, dayEnd, use8Phases: use8Phases);
+    return phases.isEmpty ? null : phases.first;
   }
 
   static const List<String> _constellationNames = [
@@ -155,3 +194,14 @@ class AstroEvents {
     return "${_constellationNames[index]}座";
   }
 }
+
+/// 获取时间范围内发生的精确月相。
+List<MoonPhaseResult> getMoonPhases(
+  AstroDateTime start,
+  AstroDateTime end, {
+  bool use8Phases = false,
+}) => AstroEvents.getMoonPhases(start, end, use8Phases: use8Phases);
+
+/// 获取指定公历年的全部月相。
+List<MoonPhaseResult> getYearMoonPhases(int year, {bool use8Phases = false}) =>
+    AstroEvents.getYearMoonPhases(year, use8Phases: use8Phases);

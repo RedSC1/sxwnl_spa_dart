@@ -6,11 +6,12 @@
 >
 > Disclaimer: This project is an AI-assisted implementation for learning/reference only. Accuracy is not guaranteed. Please credit the original algorithm author (SXWNL author: Xu Jianwei) when using this project/package. For commercial use, obtain authorization from the original algorithm author first. Commercial use of this project's code is under the MIT license, but commercial use of the underlying algorithms requires separate permission from the original author; the maintainer assumes no liability for any third-party commercial use.
 
-天文历法计算参考寿星天文历（万年历）[sxwnl](https://github.com/sxwnl/sxwnl)，太阳位置算法参考 [dart-spa](https://github.com/pingbird/dart-spa) 并做了深度适配与调整。
+本项目的农历、节气、日月食、行星、恒星及实时日月位置等主天文历法计算，均以寿星天文历（万年历）[sxwnl](https://github.com/sxwnl/sxwnl) 为原始算法来源并进行 Dart 移植；独立的日出日落、真太阳时和日上中天接口另提供基于 [dart-spa](https://github.com/pingbird/dart-spa) 的 SPA 路径，并做了适配与调整。两套算法不应混用于同一条寿星历法计算链。详见下方的[项目沿革：为什么同时内置两套算法？](#why-two-architectures)。
 
 ## ✨ 特性
 
 *   **农历转换**：`LunarDate` 支持阳历 ↔ 农历双向转换，兼容历史特殊月名
+*   **回历**：`HuiLiDate` / `HijriDate` 按寿星原版 30 年周期规则计算伊斯兰历日期
 *   **农历节气**：农历排盘与节气计算
 *   **太阳位置**：真太阳时、均时差、日出日落、日上中天
 *   **实时日月位置（sxwnl 兼容）**：太阳/月亮的方位角、高度角、视差修正、固定标准折射前后坐标
@@ -19,7 +20,8 @@
 *   **一站式模型**：`DayInfo` 对象集成干支、农历、节日、节气、月相、日出日落、星座等全量单日信息
 *   **节日民俗**：对标原版 sxwnl (lunar.js) 补全节日库，支持分类过滤与民俗进度显示（如“初伏第3天”）
 *   **日月食（sxwnl 兼容）**：月食食甚与接触时刻、日食快速筛选、全球日食中心线及半影/本影南北界
-*   **行星位置与天象（sxwnl 兼容）**：水星至冥王星位置、水星/金星大距、行星留、合月及合/冲
+*   **行星位置与天象（sxwnl 兼容）**：太阳、月亮及水星至冥王星等太阳系主要天体的位置；水星/金星大距、行星留、合月及合/冲
+*   **恒星位置（sxwnl `ephB` 兼容）**：脚本提取的 `HXK` 恒星库、88 星座表、岁差/章动/光行差/视差修正与站心地平坐标
 *   **历史历法**：春秋、战国、秦汉等时期的历法规则（已移植部分）
 *   **纯 Dart**：零 Native 依赖，全平台支持
 
@@ -27,7 +29,7 @@
 
 ```yaml
 dependencies:
-  sxwnl_spa_dart: ^0.20.0
+  sxwnl_spa_dart: ^1.0.0
 ```
 
 > `0.18.1` 起，`LunarDate.lunarYear` 对外语义真正统一为天文纪年（含公元 0 年）。
@@ -41,15 +43,48 @@ dependencies:
 import 'package:sxwnl_spa_dart/sxwnl_spa_dart.dart';
 
 void main() {
-  final time = AstroDateTime(2023, 1, 22, 12, 0, 0);
+  // 新版入口要求把民用时区随 AstroDateTime 一起携带。
+  final time = AstroDateTime(2023, 1, 22, 12, 0, 0).withTimeZone(8.0);
   final loc = Location(87.6, 43.8);
-  final res = calcTrueSolarTime(time, loc);
+  // SPA 仅用于独立的真太阳时、日出日落和日上中天计算。
+  final res = calcTrueSolarTime2(time, loc, method: SolarCalcMethod.spa);
 
   print('平太阳时 (Mean Solar Time): $time');
   print('真太阳时 (True Solar Time): ${res.trueSolarTime}');
   print('日上中天 (Solar Noon): ${res.solarNoon}');
   print('均时差 (Equation of Time): ${res.equationOfTime.inMinutes} 分钟');
 }
+```
+
+`calcTrueSolarTime2()` 会保留输入的 `UTC+8` 时区标记；若需要与寿星万年历
+原版路径对齐，可将 `method` 改为 `SolarCalcMethod.sxwnl`。旧版
+`calcTrueSolarTime()` 仍保留兼容，但时区通过单独的 `timezone` 参数传入，
+新代码建议使用上面的新版入口。
+
+### 时间尺度与时区
+
+`AstroDateTime` 的 `toJulianDay()` / `toJ2000()` 保持原有的时区中立
+行为，不会根据元数据自动偏移。直接构造的对象以及 `fromJulianDay()` /
+`fromJ2000()` 的 `timeZone` 都是 `null`，用于兼容旧代码。
+
+需要明确标记时间表示时：
+
+- `fromBJJ2000()`：寿星万年历约定的北京时间 J2000 日数，标记为 `UTC+8`，不再额外偏移。
+- `fromBJJulianDay()`：寿星万年历约定的北京时间绝对 JD，标记为 `UTC+8`。
+- `fromStdJulianDay(jd, timeZone: 8)`：先按标准 UTC+0 绝对 JD 反解，再显示为指定时区并保留标记。
+- `fromStdJ2000(jd, timeZone: 8)`：先按原始 J2000 行为反解，再将显示时间加 8 小时并标记为 `UTC+8`。
+- `toTimeZone(7)`：保持同一瞬间，将带有时区的对象转换为 UTC+7，并返回新对象；不会就地修改原对象。
+- `withTimeZone(7)`：只替换时区标记，不改变钟表字段，适合确认元数据而不是进行时刻换算。
+- `toStdJulianDay()` / `toStdJ2000()`：根据对象的 `timeZone` 转回 UTC+0；时区为空时不偏移。
+
+寿星 `SSQ` / `JieQi` 等接口返回的“北京时间 J2000 日数”可直接使用
+`AstroDateTime.fromBJJ2000()`，不要再额外加 8 小时。
+
+例如，将 UTC J2000 日数显示为北京时间：
+
+```dart
+final utcJ2000 = AstroDateTime(2025, 1, 1, 0, 0, 0, 0.5).toJ2000();
+final beijing = AstroDateTime.fromStdJ2000(utcJ2000, timeZone: 8);
 ```
 
 ### 2. 农历排盘 (Lunar Calendar)
@@ -64,7 +99,7 @@ void main() {
 
   print('闰月索引 (Leap Month Index): ${res.leap}');
   for (int i = 0; i < 14; i++) {
-    final dt = AstroDateTime.fromJ2000(res.hs[i]);
+    final dt = AstroDateTime.fromBJJ2000(res.hs[i]);
     print('${res.ym[i]}月 (Month): ${dt.year}-${dt.month}-${dt.day}');
   }
 }
@@ -81,7 +116,7 @@ void main() {
   final dt = AstroDateTime(2023, 2, 4, 12, 0, 0);
   final loc = Location(116.4, 39.9);
   final trueSolar = calcTrueSolarTime(dt, loc);
-  final jdUt = dt.toJ2000() - 8 / 24;
+  final jdUt = dt.subtract(const Duration(hours: 8)).toJ2000();
   final bazi = calcGanZhi(jdUt, trueSolar.trueSolarTime.toJ2000());
   print('八字 (Gan-zhi): $bazi');
 }
@@ -102,6 +137,19 @@ void main() {
   final lunar2 = LunarDate.fromString(2025, "正", 15);
   print('阳历: ${lunar2.toSolar}');
 }
+```
+
+#### 回历 / 伊斯兰历（Hijri）
+
+`HuiLiDate` / `HijriDate` 移植的是寿星万年历 `oba.getHuiLi()` 的**算术回历**：
+按固定的 30 年（10631 日）周期计算，不根据观测新月、地点或当地教法重新判月。
+输入日期按寿星万年历的北京时间民用日归属处理；`fromBJJ2000()` 接收北京时间
+J2000.0 相对日数，`fromSolar()` 接收 `AstroDateTime`。
+
+```dart
+final hijri = HuiLiDate.fromSolar(AstroDateTime(2000, 1, 1));
+print(hijri); // 1420-9-24 AH
+print('${hijri.Hyear}-${hijri.Hmonth}-${hijri.Hday}');
 ```
 
 ### 5. 类型安全的干支计算 (Typed Gan-zhi)
@@ -144,6 +192,40 @@ void main() {
   print('UTC时间: ${tp.utcTime}');
 }
 ```
+
+#### 2026 年节气官方历书对照（北京时间）
+
+下面的对照取自中国科学院紫金山天文台《二○二六年日历资料》（按
+GB/T 33661-2017 编制）。官方历书将时刻四舍五入到分钟；本库保留计算
+得到的秒及秒的小数部分，因此这里只并列两种时刻，不计算差值。
+对应回归测试：`test/pmo_2026_year_oracle_test.dart`。
+
+| 紫金山天文台发布的时间 | 本库计算时间 |
+| --- | --- | --- |
+| 小寒：2026-01-05 16:23 | 小寒：2026-01-05 16:23:10.232 |
+| 大寒：2026-01-20 09:45 | 大寒：2026-01-20 09:44:56.393 |
+| 立春：2026-02-04 04:02 | 立春：2026-02-04 04:02:08.404 |
+| 雨水：2026-02-18 23:52 | 雨水：2026-02-18 23:51:56.133 |
+| 惊蛰：2026-03-05 21:59 | 惊蛰：2026-03-05 21:58:59.904 |
+| 春分：2026-03-20 22:46 | 春分：2026-03-20 22:45:58.912 |
+| 清明：2026-04-05 02:40 | 清明：2026-04-05 02:40:00.225 |
+| 谷雨：2026-04-20 09:39 | 谷雨：2026-04-20 09:39:08.426 |
+| 立夏：2026-05-05 19:49 | 立夏：2026-05-05 19:48:44.016 |
+| 小满：2026-05-21 08:37 | 小满：2026-05-21 08:36:45.435 |
+| 芒种：2026-06-05 23:48 | 芒种：2026-06-05 23:48:21.246 |
+| 夏至：2026-06-21 16:25 | 夏至：2026-06-21 16:24:30.105 |
+| 小暑：2026-07-07 09:57 | 小暑：2026-07-07 09:56:57.304 |
+| 大暑：2026-07-23 03:13 | 大暑：2026-07-23 03:13:05.478 |
+| 立秋：2026-08-07 19:43 | 立秋：2026-08-07 19:42:43.446 |
+| 处暑：2026-08-23 10:19 | 处暑：2026-08-23 10:18:48.704 |
+| 白露：2026-09-07 22:41 | 白露：2026-09-07 22:41:16.474 |
+| 秋分：2026-09-23 08:05 | 秋分：2026-09-23 08:05:13.908 |
+| 寒露：2026-10-08 14:29 | 寒露：2026-10-08 14:29:17.494 |
+| 霜降：2026-10-23 17:38 | 霜降：2026-10-23 17:37:57.351 |
+| 立冬：2026-11-07 17:52 | 立冬：2026-11-07 17:52:04.503 |
+| 小雪：2026-11-22 15:23 | 小雪：2026-11-22 15:23:21.289 |
+| 大雪：2026-12-07 10:53 | 大雪：2026-12-07 10:52:31.899 |
+| 冬至：2026-12-22 04:50 | 冬至：2026-12-22 04:50:13.691 |
 
 ### 7. 节气查询 (Solar Terms)
 
@@ -254,7 +336,7 @@ void main() {
 }
 ```
 
-`rsGS.jieX()` 的曲线均为扁平的 `[经度, 纬度, ...]` 弧度数组：`L0` 是中心线，`L1/L2` 是半影北/南界，`L3/L4` 是本影北/南界，`L5/L6` 是 0.5 食分北/南界。`p*`、`q*` 还保留了原版的初亏界和日出日没食甚连接线。地方日食（`rsPL`）尚在移植中。
+`rsGS.jieX()` 的曲线均为扁平的 `[经度, 纬度, ...]` 弧度数组：`L0` 是中心线，`L1/L2` 是半影北/南界，`L3/L4` 是本影北/南界，`L5/L6` 是 0.5 食分北/南界。`p*`、`q*` 还保留了原版的初亏界和日出日没食甚连接线。`rsGS.jieX2()` 提供闭合的全球本影/半影/晨昏圈曲线，`rsGS.jieX3()` 提供原版逐分钟界线表；地方日食（`rsPL`）的 `secMax()`、`secXY()` 和 `nbj()` 南北界计算也已移植。
 
 #### PMO 独立对照
 
@@ -310,6 +392,84 @@ void main() {
 }
 ```
 
+也可以直接搜索一段时间或整年的月相。范围采用半开区间 `[start, end)`，
+返回结果按北京时间发生时刻排序；默认返回朔、上弦、望、下弦，传入
+`use8Phases: true` 可返回八种月相节点。
+
+```dart
+// 2026 年全部主月相
+final phases2026 = getYearMoonPhases(2026);
+for (final phase in phases2026) {
+  print('${phase.name}: ${phase.dateTime}');
+}
+
+// 查询一个日期范围内的八种月相
+final phases8 = getMoonPhases(
+  AstroDateTime(2026, 1, 1),
+  AstroDateTime(2026, 2, 1),
+  use8Phases: true,
+);
+```
+
+#### 2026 年朔、望、两弦官方历书对照（北京时间）
+
+下面对照中国科学院紫金山天文台《二○二六年日历资料》中的“朔、望、两弦
+日期时刻表”。官方时刻四舍五入到分钟；本库使用寿星万年历的高精度定朔链，
+保留秒及秒的小数部分，因此这里只并列两种时刻，不计算差值。
+
+| 紫金山天文台发布的时间 | 本库计算时间 |
+| --- | --- |
+| 望：2026-01-03 18:03 | 望：2026-01-03 18:02:55.046 |
+| 下弦：2026-01-10 23:48 | 下弦：2026-01-10 23:48:23.775 |
+| 朔：2026-01-19 03:52 | 朔：2026-01-19 03:51:59.104 |
+| 上弦：2026-01-26 12:47 | 上弦：2026-01-26 12:47:23.870 |
+| 望：2026-02-02 06:09 | 望：2026-02-02 06:09:14.883 |
+| 下弦：2026-02-09 20:43 | 下弦：2026-02-09 20:43:06.348 |
+| 朔：2026-02-17 20:01 | 朔：2026-02-17 20:01:09.084 |
+| 上弦：2026-02-24 20:28 | 上弦：2026-02-24 20:27:36.937 |
+| 望：2026-03-03 19:38 | 望：2026-03-03 19:37:53.657 |
+| 下弦：2026-03-11 17:39 | 下弦：2026-03-11 17:38:30.840 |
+| 朔：2026-03-19 09:23 | 朔：2026-03-19 09:23:28.813 |
+| 上弦：2026-03-26 03:18 | 上弦：2026-03-26 03:17:42.924 |
+| 望：2026-04-02 10:12 | 望：2026-04-02 10:11:57.614 |
+| 下弦：2026-04-10 12:52 | 下弦：2026-04-10 12:51:39.053 |
+| 朔：2026-04-17 19:52 | 朔：2026-04-17 19:51:48.538 |
+| 上弦：2026-04-24 10:32 | 上弦：2026-04-24 10:31:45.517 |
+| 望：2026-05-02 01:23 | 望：2026-05-02 01:23:10.469 |
+| 下弦：2026-05-10 05:10 | 下弦：2026-05-10 05:10:28.001 |
+| 朔：2026-05-17 04:01 | 朔：2026-05-17 04:01:03.040 |
+| 上弦：2026-05-23 19:11 | 上弦：2026-05-23 19:10:57.381 |
+| 望：2026-05-31 16:45 | 望：2026-05-31 16:45:12.403 |
+| 下弦：2026-06-08 18:01 | 下弦：2026-06-08 18:00:31.521 |
+| 朔：2026-06-15 10:54 | 朔：2026-06-15 10:54:09.852 |
+| 上弦：2026-06-22 05:55 | 上弦：2026-06-22 05:55:24.413 |
+| 望：2026-06-30 07:57 | 望：2026-06-30 07:56:41.033 |
+| 下弦：2026-07-08 03:29 | 下弦：2026-07-08 03:28:59.482 |
+| 朔：2026-07-14 17:44 | 朔：2026-07-14 17:43:36.363 |
+| 上弦：2026-07-21 19:06 | 上弦：2026-07-21 19:05:35.973 |
+| 望：2026-07-29 22:36 | 望：2026-07-29 22:35:43.439 |
+| 下弦：2026-08-06 10:21 | 下弦：2026-08-06 10:21:29.558 |
+| 朔：2026-08-13 01:37 | 朔：2026-08-13 01:36:44.963 |
+| 上弦：2026-08-20 10:46 | 上弦：2026-08-20 10:46:20.783 |
+| 望：2026-08-28 12:19 | 望：2026-08-28 12:18:32.227 |
+| 下弦：2026-09-04 15:51 | 下弦：2026-09-04 15:51:13.990 |
+| 朔：2026-09-11 11:27 | 朔：2026-09-11 11:27:00.228 |
+| 上弦：2026-09-19 04:44 | 上弦：2026-09-19 04:43:46.816 |
+| 望：2026-09-27 00:49 | 望：2026-09-27 00:49:02.670 |
+| 下弦：2026-10-03 21:25 | 下弦：2026-10-03 21:25:03.588 |
+| 朔：2026-10-10 23:50 | 朔：2026-10-10 23:50:05.017 |
+| 上弦：2026-10-19 00:13 | 上弦：2026-10-19 00:12:41.115 |
+| 望：2026-10-26 12:12 | 望：2026-10-26 12:11:48.776 |
+| 下弦：2026-11-02 04:28 | 下弦：2026-11-02 04:28:26.803 |
+| 朔：2026-11-09 15:02 | 朔：2026-11-09 15:02:07.138 |
+| 上弦：2026-11-17 19:48 | 上弦：2026-11-17 19:47:49.788 |
+| 望：2026-11-24 22:54 | 望：2026-11-24 22:53:34.108 |
+| 下弦：2026-12-01 14:09 | 下弦：2026-12-01 14:08:39.960 |
+| 朔：2026-12-09 08:52 | 朔：2026-12-09 08:51:51.317 |
+| 上弦：2026-12-17 13:43 | 上弦：2026-12-17 13:42:40.257 |
+| 望：2026-12-24 09:28 | 望：2026-12-24 09:28:14.607 |
+| 下弦：2026-12-31 02:59 | 下弦：2026-12-31 02:59:29.966 |
+
 ### 11. 实时太阳/月亮方位与高度（sxwnl `msc`）
 
 需要某一时刻的方位角和高度角时，可使用原版同名的 `msc`。经纬度使用弧度，东经/北纬为正；`sDJ/sDW`、`mDJ/mDW` 为折射前结果，`sPJ/sPW`、`mPJ/mPW` 为采用寿星固定标准折射公式后的结果。
@@ -355,9 +515,9 @@ void main() {
 
 ### 13. 行星位置与天象（sxwnl）
 
-`pCoord()`、`xingJJ()`、`daJu()`、`xingLiu()`、`xingHY()` 与 `xingHR()` 直接移植自寿星万年历的行星计算路径。水星至海王星的底层坐标调用原版 `XL0_calc` 对应的 Dart 实现；冥王星则接入原版 `XL0Pluto` 级数并沿用 P03 岁差转换。所有这些路径都包括寿星原有的系数截断、地球多项式修正和对应经验修正；行星事件求解继续保留原版光行时迭代，并非调用 SPA。冥王星可用于 `pCoord()`、`xingJJ()` 与 `xingHY()`，但原版没有为它提供 `xingLiu()` / `xingHR()` 快速事件表，因此这两个接口对冥王星会抛出参数错误。
+`pCoord()`、`xingJJ()`、`daJu()`、`xingLiu()`、`xingHY()`、`xingHR()` 与 `xingXPosition()` 直接移植自寿星万年历的行星计算路径，当前已覆盖太阳、月亮以及水星至冥王星等太阳系主要天体。水星至海王星的底层坐标调用原版 `XL0_calc` 对应的 Dart 实现；冥王星则接入原版 `XL0Pluto` 级数并沿用 P03 岁差转换。`xingXPosition()` 还覆盖站心视差、地平坐标和固定标准大气折射；文本兼容入口为 `xingX()`。底层 `xingLiu0()`、`xingMP()`、`xingSP()` 也保留为公开接口，便于复用寿星的事件迭代链。所有这些路径都包括寿星原有的系数截断、地球多项式修正和对应经验修正；行星事件求解继续保留原版光行时迭代，并非调用 SPA。冥王星可用于 `pCoord()`、`xingJJ()`、`xingHY()`、`xingLiu()` 与 `xingHR()`；原版 `xingLiu()` / `xingHR()` 的迭代初始步骤直接调用 `XL0_calc(8, ...)`，而 `XL0` 只覆盖到海王星，因此原版 JavaScript 传入冥王星时会因数组越界抛出运行时错误。本库利用已经移植的 `pCoord()` 冥王星经度路径补上这两个事件接口；这是面向完整行星覆盖的兼容性扩展，冥王星事件结果不应被表述为原版 JavaScript 的逐值回归。
 
-这些低层 API 的 `t` 和返回时刻均为 **J2000.0 起算的 TT/TD 儒略世纪**。`daJu()` 仅适用于水星、金星；`xingHR(..., true)` 对外行星求冲、对内行星求下合。用于民用时间展示时，应按该时刻的 `dT` 先转 UTC，再按需要转北京时间。
+这些低层 API 的 `t` 和返回时刻均为 **J2000.0 起算的 TT/TD 儒略世纪**。`daJu()` 仅适用于水星、金星；`xingHR(..., true)` 对外行星求冲、对内行星求下合。太阳均时差还可直接调用 `ptyZty()`（高精度）或 `ptyZty2()`（约 1 秒精度），返回单位为日（一天的分数）。用于民用时间展示时，应按该时刻的 `dT` 先转 UTC，再按需要转北京时间。
 
 这里有一条可复现的外部 oracle：SEDS 的 [Mars 2003](https://spider.seds.org/spider/Mars/mars2003.html) 记载火星冲日为 **2003-08-28 17:58:49 UTC**（北京时间为次日 01:58:49）。本库 `xingHR(Planet.mars, ..., true)` 给出 **17:58:48.77 UTC**，相差约 **−0.23 秒**；该断言已作为回归测试保留。它是与公开天文资料的交叉验证，而与原版寿星万年历的 TT 输出仍单独做逐值一致性测试。
 
@@ -373,6 +533,16 @@ void main() {
   print(venusGreatestElongation.t);
 }
 ```
+
+### 14. 恒星与星座（sxwnl `ephB`）
+
+`ephB` 中的 `HXK` 恒星库与 `xz88` 88 星座表由 `tool/extract_ephb_stars.mjs` 从原版源码机械提取，Dart 侧不手抄系数或星表记录；可用 `tool/verify_ephb_data.mjs` 逐项核对生成文件。`getHXK()` 将原始分块解析为类型安全的恒星记录，`calcStarPositions()` / `hxCalcPositions()` 提供平位置、视位置和站心地平坐标，`schHXK()` 保留原版星库检索入口。
+
+恒星计算的时刻参数为 J2000.0 起算的 TT/TD 儒略世纪；经纬度使用弧度，结果中的距离单位沿用寿星原版（恒星为 AU 标度）。
+
+寿星底层坐标辅助也从包入口导出，包括 `llr2xyz()`、`xyz2llr()`、`CD2DP()`、`j1_j2()`、`parallax()`、`MQC()`、`MQC2()`、`shiChaJ()`、`sunShengJ()`、`pGST2()`、`nutation()` 和 `CDnutation()`；它们保留原版的坐标单位与 J2000/TT 语义。
+
+<a id="why-two-architectures"></a>
 
 ## 🌗 项目沿革：为什么同时内置 SPA 和 SXWNL？
 
@@ -393,10 +563,11 @@ void main() {
 *   对比基准：sxwnl 寿星天文历(万年历) 5.10 原作者: 许剑伟（https://github.com/sxwnl/sxwnl）
 *   对比范围：节气/朔、日上中天、日出、日落（均与 sxwnl 对比，不与 spa 对比）
 *   对比脚本：test/compare_jq.dart、test/compare_solar_noon.dart、test/compare_sunrise.dart、test/compare_sunset.dart
-*   系数表审计：`node tool/verify_xl_data.mjs` 从原版 `eph0.js` 读取数值，逐项精确比较本库 `XL0`（行星）、`XL1`（月球）、`XL0_xzb`（行星经验修正）及 `XL0Pluto`（冥王星）四张表。
+*   系数表审计：`node tool/verify_xl_data.mjs` 从原版 `eph0.js` 读取数值，逐项精确比较本库 `XL0`（行星）、`XL1`（月球）、`XL0_xzb`（行星经验修正）及 `XL0Pluto`（冥王星）四张表；`verify_ephb_data.mjs` 与 `verify_nutation_iau2000b.mjs` 分别逐项核对恒星/星座表和 847 个 IAU 2000B 章动系数。
 *   说明：未随包附带 sxwnl 原始源码，运行对比脚本需自行从 sxwnl 仓库下载后放入 test/sxwnl_js
 *   基准数据：test/compute_*_js.js 生成 js_*.json
 *   测试项不仅包含核心算法本身，也包含了与原版同样的查表修正（如 SSQ 的历史历法修正数据）。
+*   回历专项回归：`test/test_hui_li_date.dart` 覆盖寿星原版固定日期对照、30 年周期重复性、闰年 12 月 30 日边界、北京时间跨日及 `DayInfo` 集成，共 5 项。
 *   具体数值（由于太阳位置算法实现不同，日出/日上中天/日落存在秒级差异属于正常现象）：
 
 | 指标 | 参数 | avg_diff_seconds | max_diff_seconds | exact_second | lt_1s | gt_1s |
@@ -412,12 +583,19 @@ void main() {
 
 ## English
 
-Chinese calendar & astronomical calculations library based on sxwnl + SPA.
+Chinese calendar and astronomical calculations library based on [sxwnl](https://github.com/sxwnl/sxwnl), with an independent [dart-spa](https://github.com/pingbird/dart-spa) path for standalone true-solar-time calculations.
+
+The core Chinese-calendar, solar-term, eclipse, planetary, lunar-position, and stellar calculations follow sxwnl. SPA is intended for standalone true solar time, sunrise, sunset, and solar-noon calculations; it should not be mixed into the same sxwnl calendrical calculation chain.
 
 ### Features
 
 *   **Lunar conversion**: `LunarDate` for solar ↔ lunar bidirectional conversion
-*   **Chinese lunar calendar**: lunar year structure and solar terms
+*   **Chinese lunar calendar**: lunar year structure, solar terms, moon phases, and dynamic festivals
+*   **Hijri calendar**: `HuiLiDate` / `HijriDate` using sxwnl's original 30-year arithmetic cycle
+*   **Solar and lunar positions**: azimuth, altitude, parallax, apparent coordinates, and standard atmospheric refraction
+*   **Eclipses**: lunar-eclipse contacts, global solar-eclipse paths, and local solar-eclipse contacts with north/south limits
+*   **Planetary positions and events**: the Sun, Moon, and Mercury through Pluto; greatest elongation, stationary points, lunar conjunctions, and conjunction/opposition events. Pluto `xingLiu()` / `xingHR()` support is a Dart compatibility extension for an original sxwnl `XL0_calc(8, ...)` gap.
+*   **Stars and constellations**: mechanically extracted `ephB` `HXK` star data, 88 constellations, apparent positions, and topocentric horizontal coordinates
 *   **Solar position**: true solar time, equation of time, sunrise, sunset, solar noon
 *   **Gan-zhi**: type-safe `TianGan`/`DiZhi`/`GanZhi`/`BaZi` models + `calcBaZi()` API
 *   **Time packing**: `TimePack` for unified clock/solar/UTC time management
@@ -430,18 +608,38 @@ Chinese calendar & astronomical calculations library based on sxwnl + SPA.
 
 ```yaml
 dependencies:
-  sxwnl_spa_dart: ^0.20.0
+  sxwnl_spa_dart: ^1.0.0
 ```
 
 ### Quick Start
 
-See the Chinese examples above: 真太阳时 / 农历排盘 / 干支计算.
+The public API is available from the package entrypoint:
+
+```dart
+import 'package:sxwnl_spa_dart/sxwnl_spa_dart.dart';
+
+void main() {
+  final date = AstroDateTime(2023, 1, 22, 12).withTimeZone(8.0);
+  final location = Location(87.6, 43.8);
+  final result = calcTrueSolarTime2(
+    date,
+    location,
+    method: SolarCalcMethod.spa,
+  );
+  print(result.sunrise);
+
+  final marsOpposition = xingHR(Planet.mars, 0.03656, true);
+  print(marsOpposition); // [TT centuries from J2000, latitude difference]
+}
+```
+
+For the complete lunar-calendar, timezone, eclipse, and astronomy examples, see the Chinese sections above.
 
 ### Test Results
 
 *   Static analysis: dart analyze
 *   Baseline: sxwnl 5.10 by Xu Jianwei (https://github.com/sxwnl/sxwnl)
-*   Scope: solar terms/new moons, solar noon, sunrise, sunset (all compared to sxwnl, not SPA)
+*   Scope: solar terms/new moons, eclipse tables, planetary events, solar noon, sunrise, sunset (sxwnl paths unless marked SPA)
 *   Scripts: test/compare_jq.dart, test/compare_solar_noon.dart, test/compare_sunrise.dart, test/compare_sunset.dart
 *   Note: the original sxwnl sources are not bundled; download from sxwnl repo and place under test/sxwnl_js to run scripts
 *   Test suites encompass both the raw VSOP87 calculations and all historical adjustment data structures in `SSQ`.
@@ -459,11 +657,11 @@ See the Chinese examples above: 真太阳时 / 农历排盘 / 干支计算.
 
 ---
 
-### 🎨 推荐实现 (Reference Implementation)
+## ⚠️ 用途说明 (Scope)
 
-本项目为核心算法库。如需查看基于本库构建的专业紫微斗数/八字排盘 UI 实现，请参考：
+本项目用于天文与历法计算、历法研究及软件开发。项目不提供或认可占卜、命理或其他非科学解释，也不对使用者基于计算结果作出的解释、判断或决策负责。
 
-*   **[OpenDestiny](https://github.com/RedSC1/opendestiny-flutter)** - 开源易学排盘工具（Flutter 桌面版/全平台）。
+This project is intended for astronomical and calendrical calculations, calendar research, and software development. It does not provide or endorse divination, fortune-telling, or other non-scientific interpretations, and is not responsible for decisions or conclusions drawn from its output.
 
 ## 📚 感谢
 

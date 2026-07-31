@@ -63,6 +63,12 @@ double _dtExt(double y, double jsd) {
   return -20 + jsd * dy * dy;
 }
 
+/// 二次曲线外推 ΔT。
+///
+/// 原函数名：`dt_ext(y, jsd)`。通常直接使用 [dtCalc] 即可；此入口用于
+/// 需要复现寿星低层计算链的调用方。
+double dtExt(double y, double jsd) => _dtExt(y, jsd);
+
 /// 计算 ΔT = TT - UT1（单位：秒）。
 ///
 /// [y] 为公历年份（可含小数，如 2024.5 表示年中）。

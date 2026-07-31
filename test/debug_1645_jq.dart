@@ -25,7 +25,7 @@ void main() {
 
   for (int k = 1; k <= 24; k++) {
     final histJD = res.zq[k];
-    final histDt = AstroDateTime.fromJ2000(histJD);
+    final histDt = AstroDateTime.fromBJJ2000(histJD);
 
     // Find the corresponding accurate JQ
     final jqName = jieQiNames[(k + 23) % 24];

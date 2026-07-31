@@ -73,6 +73,9 @@ class SolarTimeResult {
 /// [location] 地理位置 (经纬度)。
 /// [timezone] 时区偏移 (小时)，默认为 +8 (北京时间)。
 /// [method] 日月算法选择，默认为 [SolarCalcMethod.spa]。
+///
+/// 这是兼容旧版的入口；新代码建议迁移到 [calcTrueSolarTime2]，
+/// 将时区随 [AstroDateTime.timeZone] 一起传递，避免时间字段与时区参数分离。
 SolarTimeResult calcTrueSolarTime(
   AstroDateTime dateTime,
   Location location, {
@@ -115,6 +118,9 @@ SolarTimeResult calcTrueSolarTime(
   final it = SPAIntermediate(); // 用于获取赤纬数据以判断极昼极夜
   final params = SPAParams(
     time: spaTime,
+    // SPA 的 DateTime 主要承载年月日时分；秒单独传入，避免
+    // AstroDateTime 的 fractionalSecond 在进入 SPA 时被截断。
+    second: dateTime.preciseSecond,
     timeZone: timezone,
     longitude: location.longitude,
     latitude: location.latitude,
@@ -209,6 +215,51 @@ SolarTimeResult calcTrueSolarTime(
   );
 }
 
+/// 计算真太阳时（时区随 [AstroDateTime] 携带的新版入口）。
+///
+/// [dateTime] 必须带有非空的 [AstroDateTime.timeZone]，例如：
+///
+/// ```dart
+/// final time = AstroDateTime(2026, 3, 4, 12).withTimeZone(8.0);
+/// final result = calcTrueSolarTime2(time, Location.beijing);
+/// ```
+///
+/// 与 [calcTrueSolarTime] 相比，这里不再单独接收 `timezone` 参数；
+/// 时区由输入日期统一携带，且返回的日出、日落和日上中天结果会保留该标记。
+/// 若 [dateTime.timeZone] 为空，将抛出 [ArgumentError]，避免无意中按错误时区计算。
+SolarTimeResult calcTrueSolarTime2(
+  AstroDateTime dateTime,
+  Location location, {
+  SolarCalcMethod method = SolarCalcMethod.spa,
+}) {
+  final timezone = dateTime.timeZone;
+  if (timezone == null) {
+    throw ArgumentError(
+      'calcTrueSolarTime2 requires dateTime.timeZone to be set; '
+      'use withTimeZone(...) or fromStdJ2000(..., timeZone: ...).',
+    );
+  }
+
+  final result = calcTrueSolarTime(
+    dateTime,
+    location,
+    timezone: timezone,
+    method: method,
+  );
+
+  AstroDateTime? markTimeZone(AstroDateTime? value) =>
+      value?.withTimeZone(timezone);
+
+  return SolarTimeResult(
+    trueSolarTime: result.trueSolarTime.withTimeZone(timezone),
+    equationOfTime: result.equationOfTime,
+    solarNoon: result.solarNoon.withTimeZone(timezone),
+    polarStatus: result.polarStatus,
+    sunrise: markTimeZone(result.sunrise),
+    sunset: markTimeZone(result.sunset),
+  );
+}
+
 SolarTimeResult _calcTrueSolarTimeSxwnl(
   AstroDateTime dateTime,
   Location location, {
@@ -222,6 +273,11 @@ SolarTimeResult _calcTrueSolarTimeSxwnl(
     0,
     0,
   );
+  // 儒略日的单位是“天”，所以 timezone（小时）需要除以 24。
+  // 数值上等价于：
+  // final jdUtNoon =
+  //     localNoon.withTimeZone(timezone).toStdJ2000();
+  // 这里保留原始写法，明确表示传给 SZJ.st 的是 UT J2000。
   final jdUtNoon = localNoon.toJ2000() - timezone / 24.0;
 
   final szj = SZJ();
@@ -230,6 +286,11 @@ SolarTimeResult _calcTrueSolarTimeSxwnl(
 
   final res = szj.st(jdUtNoon);
 
+  // SZJ 返回 UT J2000；加回 timezone / 24 后，得到当地标准时的日期字段。
+  // 数值上等价于：
+  // AstroDateTime.fromStdJ2000(jd, timeZone: timezone)
+  // 但 fromStdJ2000 会额外写入 timeZone 元数据；当前使用 fromJ2000，
+  // 因而保持旧行为：结果的时间字段已是当地标准时，但 timeZone == null。
   AstroDateTime fromJd(double jd) =>
       AstroDateTime.fromJ2000(jd + timezone / 24.0);
 

@@ -1,3 +1,5 @@
+// ignore_for_file: non_constant_identifier_names
+
 /// 太阳/月亮位置计算。
 ///
 /// 移植自寿星万年历 (sxwnl) eph0.js 的 XL 计算部分。
@@ -290,7 +292,150 @@ double mV(double t) {
   return v;
 }
 
+/// 月亮被照亮部分的比例。
+///
+/// 原函数名：`XL.moonIll(t)`。
+double moonIll(double t) {
+  final t2 = t * t;
+  final t3 = t2 * t;
+  final t4 = t3 * t;
+  const deg = math.pi / 180;
+  final D =
+      (297.8502042 +
+          445267.1115168 * t -
+          .0016300 * t2 +
+          t3 / 545868 -
+          t4 / 113065000) *
+      deg;
+  final M =
+      (357.5291092 + 35999.0502909 * t - .0001536 * t2 + t3 / 24490000) * deg;
+  final m =
+      (134.9634114 +
+          477198.8676313 * t +
+          .0089970 * t2 +
+          t3 / 69699 -
+          t4 / 14712000) *
+      deg;
+  final a =
+      math.pi -
+      D +
+      (-6.289 * math.sin(m) +
+              2.100 * math.sin(M) -
+              1.274 * math.sin(2 * D - m) -
+              .658 * math.sin(2 * D) -
+              .214 * math.sin(2 * m) -
+              .110 * math.sin(D)) *
+          deg;
+  return (1 + math.cos(a)) / 2;
+}
+
+/// 月亮站心视半径（角秒）。
+///
+/// 原函数名：`XL.moonRad(r, h)`；[r] 为月地质心距（千米），[h] 为地平纬度。
+double moonRad(double r, double h) =>
+    csSMoon / r * (1 + math.sin(h) * csREar / r);
+
+/// 月亮近地点或远地点时刻与距离 `[t, r]`。
+///
+/// [perigee] 为 true 求近地点，false 求远地点。原函数名：`XL.moonMinR`。
+List<double> moonMinR(double t, bool perigee) {
+  final period = 27.55454988 / 36525;
+  final base = (perigee ? -10.3302 : 3.4471) / 36525;
+  t = base + period * int2((t - base) / period + .5);
+  var dt = 2 / 36525;
+  var r1 = xl1Calc(2, t - dt, 10);
+  var r2 = xl1Calc(2, t, 10);
+  var r3 = xl1Calc(2, t + dt, 10);
+  t += (r1 - r3) / (r1 + r3 - 2 * r2) * dt / 2;
+  dt = .5 / 36525;
+  r1 = xl1Calc(2, t - dt, 20);
+  r2 = xl1Calc(2, t, 20);
+  r3 = xl1Calc(2, t + dt, 20);
+  t += (r1 - r3) / (r1 + r3 - 2 * r2) * dt / 2;
+  dt = 1200 / 86400 / 36525;
+  r1 = xl1Calc(2, t - dt, -1);
+  r2 = xl1Calc(2, t, -1);
+  r3 = xl1Calc(2, t + dt, -1);
+  t += (r1 - r3) / (r1 + r3 - 2 * r2) * dt / 2;
+  r2 += (r1 - r3) / (r1 + r3 - 2 * r2) * (r3 - r1) / 8;
+  return [t, r2];
+}
+
+/// 月亮升交点或降交点时刻与月球黄经 `[t, lon]`。
+///
+/// [ascending] 为 true 求升交点，false 求降交点。原函数名：`XL.moonNode`。
+List<double> moonNode(double t, bool ascending) {
+  final period = 27.21222082 / 36525;
+  final base = (ascending ? 21 : 35) / 36525;
+  t = base + period * int2((t - base) / period + .5);
+  var dt = .5 / 36525;
+  var w = xl1Calc(1, t, 10);
+  var w2 = xl1Calc(1, t + dt, 10);
+  var v = (w2 - w) / dt;
+  t -= w / v;
+  dt = .05 / 36525;
+  w = xl1Calc(1, t, 40);
+  w2 = xl1Calc(1, t + dt, 40);
+  v = (w2 - w) / dt;
+  t -= w / v;
+  w = xl1Calc(1, t, -1);
+  t -= w / v;
+  return [t, xl1Calc(0, t, -1)];
+}
+
+/// 地球近日点或远日点时刻与日地距离 `[t, r]`。
+///
+/// [perihelion] 为 true 求近日点，false 求远日点。原函数名：`XL.earthMinR`。
+List<double> earthMinR(double t, bool perihelion) {
+  final period = 365.25963586 / 36525;
+  final base = (perihelion ? 1.7 : 184.5) / 36525;
+  t = base + period * int2((t - base) / period + .5);
+  var dt = 3 / 36525;
+  var r1 = xl0Calc(0, 2, t - dt, 10);
+  var r2 = xl0Calc(0, 2, t, 10);
+  var r3 = xl0Calc(0, 2, t + dt, 10);
+  t += (r1 - r3) / (r1 + r3 - 2 * r2) * dt / 2;
+  dt = .2 / 36525;
+  r1 = xl0Calc(0, 2, t - dt, 80);
+  r2 = xl0Calc(0, 2, t, 80);
+  r3 = xl0Calc(0, 2, t + dt, 80);
+  t += (r1 - r3) / (r1 + r3 - 2 * r2) * dt / 2;
+  dt = .01 / 36525;
+  r1 = xl0Calc(0, 2, t - dt, -1);
+  r2 = xl0Calc(0, 2, t, -1);
+  r3 = xl0Calc(0, 2, t + dt, -1);
+  t += (r1 - r3) / (r1 + r3 - 2 * r2) * dt / 2;
+  r2 += (r1 - r3) / (r1 + r3 - 2 * r2) * (r3 - r1) / 8;
+  return [t, r2];
+}
+
 // ==================== 反求时间（牛顿迭代） ====================
+
+/// 已知地球真黄经反求时间。
+///
+/// 原函数名：`XL.E_Lon_t(W)`。返回 J2000.0 起算的儒略世纪数。
+double eLonT(double w) {
+  var v = 628.3319653318;
+  var t = (w - 1.75347) / v;
+  v = eV(t);
+  t += (w - eLon(t, 10)) / v;
+  v = eV(t);
+  t += (w - eLon(t, -1)) / v;
+  return t;
+}
+
+/// 已知真月球黄经反求时间。
+///
+/// 原函数名：`XL.M_Lon_t(W)`。返回 J2000.0 起算的儒略世纪数。
+double mLonT(double w) {
+  var v = 8399.70911033384;
+  var t = (w - 3.81034) / v;
+  t += (w - mLon(t, 3)) / v;
+  v = mV(t);
+  t += (w - mLon(t, 20)) / v;
+  t += (w - mLon(t, -1)) / v;
+  return t;
+}
 
 /// 已知太阳视黄经反求时间（高精度）。
 ///
@@ -347,6 +492,30 @@ double msALonT(double w) {
   return t;
 }
 
+/// 已知月日视黄经差反求时间（高速低精度，误差约不超过 40 秒）。
+///
+/// 原函数名：`XL.MS_aLon_t1(W)`。返回 J2000.0 起算的儒略世纪数。
+double msALonT1(double w) {
+  var v = 7771.37714500204;
+  var t = (w + 1.08472) / v;
+  t += (w - msALon(t, 3, 3)) / v;
+  v = mV(t) - eV(t);
+  t += (w - msALon(t, 50, 20)) / v;
+  return t;
+}
+
+/// 已知太阳视黄经反求时间（高速低精度，最大误差约不超过 50 秒）。
+///
+/// 原函数名：`XL.S_aLon_t1(W)`。返回 J2000.0 起算的儒略世纪数。
+double sALonT1(double w) {
+  var v = 628.3319653318;
+  var t = (w - 1.75347 - math.pi) / v;
+  v = 628.332 + 21 * math.sin(1.527 + 628.307585 * t);
+  t += (w - sALon(t, 3)) / v;
+  t += (w - sALon(t, 40)) / v;
+  return t;
+}
+
 /// 已知月日视黄经差反求时间（低精度，误差不超过600秒）。
 ///
 /// [w] 目标月日视黄经差（弧度）。
@@ -380,3 +549,59 @@ double msALonT2(double w) {
   t += (w - l) / v;
   return t;
 }
+
+/// 高精度均时差（太阳视黄经与视赤经的差）。
+///
+/// 原函数名：`pty_zty(t)`。返回以“日”为单位的一天内时间差（即一天的
+/// 分数）；乘以 24 小时即可得到小时。这里保留寿星原版的章动、黄纬及
+/// 真黄赤交角修正，适合需要与 sxwnl 数值对齐的调用。
+double ptyZty(double t) {
+  final t2 = t * t;
+  final t3 = t2 * t;
+  final t4 = t3 * t;
+  final t5 = t4 * t;
+  var longitude =
+      (1753470142 +
+              628331965331.8 * t +
+              5296.74 * t2 +
+              0.432 * t3 -
+              0.1124 * t4 -
+              0.00009 * t5) /
+          1000000000 +
+      math.pi -
+      20.5 / rad;
+
+  final dL = -17.2 * math.sin(2.1824 - 33.75705 * t) / rad;
+  final dE = 9.2 * math.cos(2.1824 - 33.75705 * t) / rad;
+  final e = hcjj(t) + dE;
+  final sun = <double>[
+    eLon(t, 50) + math.pi + gxcSunLon(t) + dL,
+    -(2796 * math.cos(3.1987 + 8433.46616 * t) +
+            1016 * math.cos(5.4225 + 550.75532 * t) +
+            804 * math.cos(3.88 + 522.3694 * t)) /
+        1000000000,
+  ];
+  final equatorial = llrConv(sun, e);
+  equatorial[0] -= dL * math.cos(e);
+  longitude = rad2rrad(longitude - equatorial[0]);
+  return longitude / pi2;
+}
+
+/// 低精度均时差（误差约 1 秒）。
+///
+/// 原函数名：`pty_zty2(t)`，返回单位同 [ptyZty]。
+double ptyZty2(double t) {
+  var longitude =
+      (1753470142 + 628331965331.8 * t + 5296.74 * t * t) / 1000000000 +
+      math.pi;
+  final e = (84381.4088 - 46.836051 * t) / rad;
+  final sun = llrConv([eLon(t, 5) + math.pi, 0, 0], e);
+  longitude = rad2rrad(longitude - sun[0]);
+  return longitude / pi2;
+}
+
+/// 原始下划线命名的兼容别名。
+double pty_zty(double t) => ptyZty(t);
+
+/// 原始下划线命名的兼容别名。
+double pty_zty2(double t) => ptyZty2(t);
