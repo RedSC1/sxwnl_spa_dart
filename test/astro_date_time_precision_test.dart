@@ -85,6 +85,20 @@ void main() {
       expect(roundTrip.millisecond, dateTime.millisecond);
     });
 
+    test('converts timezone while preserving the represented instant', () {
+      final beijing = AstroDateTime.fromStdJ2000(0, timeZone: 8);
+      final bangkok = beijing.toTimeZone(7);
+      final relabeled = beijing.withTimeZone(7);
+      expect(beijing.hour, 20);
+      expect(beijing.timeZone, 8.0);
+      expect(bangkok.hour, 19);
+      expect(bangkok.timeZone, 7.0);
+      expect(bangkok.toStdJ2000(), closeTo(0, 1e-12));
+      expect(beijing.toStdJ2000(), closeTo(0, 1e-12));
+      expect(relabeled.hour, 20);
+      expect(relabeled.timeZone, 7.0);
+    });
+
     test('add, subtract, and difference retain sub-second durations', () {
       final start = AstroDateTime(2025, 1, 1, 23, 59, 59, 0.125);
       final duration = const Duration(microseconds: 1_125_000);

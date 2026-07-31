@@ -73,6 +73,8 @@ void main() {
 - `fromBJJulianDay()`：寿星万年历约定的北京时间绝对 JD，标记为 `UTC+8`。
 - `fromStdJulianDay(jd, timeZone: 8)`：先按标准 UTC+0 绝对 JD 反解，再显示为指定时区并保留标记。
 - `fromStdJ2000(jd, timeZone: 8)`：先按原始 J2000 行为反解，再将显示时间加 8 小时并标记为 `UTC+8`。
+- `toTimeZone(7)`：保持同一瞬间，将带有时区的对象转换为 UTC+7，并返回新对象；不会就地修改原对象。
+- `withTimeZone(7)`：只替换时区标记，不改变钟表字段，适合确认元数据而不是进行时刻换算。
 - `toStdJulianDay()` / `toStdJ2000()`：根据对象的 `timeZone` 转回 UTC+0；时区为空时不偏移。
 
 寿星 `SSQ` / `JieQi` 等接口返回的“北京时间 J2000 日数”可直接使用

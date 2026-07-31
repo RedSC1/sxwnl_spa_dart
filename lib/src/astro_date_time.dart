@@ -78,6 +78,10 @@ class AstroDateTime implements Comparable<AstroDateTime> {
   double? get timezone => timeZone;
 
   /// 返回带有指定时区标记的同一日期字段。
+  ///
+  /// 此方法只改变时区元数据，不换算钟表字段。例如，`12:00 UTC+8` 调用
+  /// `withTimeZone(7)` 后仍显示 `12:00`，只是被标记为 UTC+7。若要保持同一
+  /// 瞬间并换算显示时间，请使用 [toTimeZone]。
   AstroDateTime withTimeZone(double? zone) => AstroDateTime._internal(
     year,
     month,
@@ -88,6 +92,14 @@ class AstroDateTime implements Comparable<AstroDateTime> {
     fractionalSecond,
     zone,
   );
+
+  /// 将同一瞬间转换为目标民用时区，返回新的对象。
+  ///
+  /// 例如，`12:00 UTC+8` 转为 UTC+7 会得到 `11:00 UTC+7`。本类是不可变
+  /// 对象，因此不会就地修改当前实例；当前实例仍保持原时区和钟表字段。
+  AstroDateTime toTimeZone(double zone) {
+    return AstroDateTime.fromStdJulianDay(toStdJulianDay(), timeZone: zone);
+  }
 
   // --------------- 与 DateTime 兼容的属性 ---------------
 
@@ -418,7 +430,14 @@ class AstroDateTime implements Comparable<AstroDateTime> {
       f -= 1;
       z += 1;
     }
-    var secondsOfDay = f * 86400.0;
+    // 将反解结果归一到微秒；JD 的浮点误差可能把整秒推到相邻秒的几十
+    // 微秒内，例如把 J2000.0 表示成 11:59:59.999987，此时应吸附回整秒。
+    final rawSecondsOfDay = f * 86400.0;
+    final nearestSecond = rawSecondsOfDay.roundToDouble();
+    var secondsOfDay = (rawSecondsOfDay - nearestSecond).abs() < 5e-5
+        ? nearestSecond
+        : (rawSecondsOfDay * Duration.microsecondsPerSecond).round() /
+              Duration.microsecondsPerSecond;
     // 极少数情况下浮点乘法会把小于一天的 f 舍入为 86400，
     // 此时进位到下一天后再进行日历字段计算。
     if (secondsOfDay >= 86400.0) {
