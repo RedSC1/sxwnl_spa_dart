@@ -471,12 +471,19 @@ void main() {
 
 ## English
 
-Chinese calendar & astronomical calculations library based on sxwnl + SPA.
+Chinese calendar and astronomical calculations library based on [sxwnl](https://github.com/sxwnl/sxwnl), with an independent [dart-spa](https://github.com/pingbird/dart-spa) path for standalone true-solar-time calculations.
+
+The core Chinese-calendar, solar-term, eclipse, planetary, lunar-position, and stellar calculations follow sxwnl. SPA is intended for standalone true solar time, sunrise, sunset, and solar-noon calculations; it should not be mixed into the same sxwnl calendrical calculation chain.
 
 ### Features
 
 *   **Lunar conversion**: `LunarDate` for solar ↔ lunar bidirectional conversion
-*   **Chinese lunar calendar**: lunar year structure and solar terms
+*   **Chinese lunar calendar**: lunar year structure, solar terms, moon phases, and dynamic festivals
+*   **Hijri calendar**: `HuiLiDate` / `HijriDate` using sxwnl's original 30-year arithmetic cycle
+*   **Solar and lunar positions**: azimuth, altitude, parallax, apparent coordinates, and standard atmospheric refraction
+*   **Eclipses**: lunar-eclipse contacts, global solar-eclipse paths, and local solar-eclipse contacts with north/south limits
+*   **Planetary positions and events**: the Sun, Moon, and Mercury through Pluto; greatest elongation, stationary points, lunar conjunctions, and conjunction/opposition events. Pluto `xingLiu()` / `xingHR()` support is a Dart compatibility extension for an original sxwnl `XL0_calc(8, ...)` gap.
+*   **Stars and constellations**: mechanically extracted `ephB` `HXK` star data, 88 constellations, apparent positions, and topocentric horizontal coordinates
 *   **Solar position**: true solar time, equation of time, sunrise, sunset, solar noon
 *   **Gan-zhi**: type-safe `TianGan`/`DiZhi`/`GanZhi`/`BaZi` models + `calcBaZi()` API
 *   **Time packing**: `TimePack` for unified clock/solar/UTC time management
@@ -494,13 +501,33 @@ dependencies:
 
 ### Quick Start
 
-See the Chinese examples above: 真太阳时 / 农历排盘 / 干支计算.
+The public API is available from the package entrypoint:
+
+```dart
+import 'package:sxwnl_spa_dart/sxwnl_spa_dart.dart';
+
+void main() {
+  final date = AstroDateTime(2023, 1, 22, 12).withTimeZone(8.0);
+  final location = Location(87.6, 43.8);
+  final result = calcTrueSolarTime2(
+    date,
+    location,
+    method: SolarCalcMethod.spa,
+  );
+  print(result.sunrise);
+
+  final marsOpposition = xingHR(Planet.mars, 0.03656, true);
+  print(marsOpposition); // [TT centuries from J2000, latitude difference]
+}
+```
+
+For the complete lunar-calendar, timezone, eclipse, and astronomy examples, see the Chinese sections above.
 
 ### Test Results
 
 *   Static analysis: dart analyze
 *   Baseline: sxwnl 5.10 by Xu Jianwei (https://github.com/sxwnl/sxwnl)
-*   Scope: solar terms/new moons, solar noon, sunrise, sunset (all compared to sxwnl, not SPA)
+*   Scope: solar terms/new moons, eclipse tables, planetary events, solar noon, sunrise, sunset (sxwnl paths unless marked SPA)
 *   Scripts: test/compare_jq.dart, test/compare_solar_noon.dart, test/compare_sunrise.dart, test/compare_sunset.dart
 *   Note: the original sxwnl sources are not bundled; download from sxwnl repo and place under test/sxwnl_js to run scripts
 *   Test suites encompass both the raw VSOP87 calculations and all historical adjustment data structures in `SSQ`.
