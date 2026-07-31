@@ -6,7 +6,7 @@
 >
 > Disclaimer: This project is an AI-assisted implementation for learning/reference only. Accuracy is not guaranteed. Please credit the original algorithm author (SXWNL author: Xu Jianwei) when using this project/package. For commercial use, obtain authorization from the original algorithm author first. Commercial use of this project's code is under the MIT license, but commercial use of the underlying algorithms requires separate permission from the original author; the maintainer assumes no liability for any third-party commercial use.
 
-本项目的农历、节气、日月食、行星、恒星及实时日月位置等主天文历法计算，均以寿星天文历（万年历）[sxwnl](https://github.com/sxwnl/sxwnl) 为原始算法来源并进行 Dart 移植；独立的日出日落、真太阳时和日上中天接口另提供基于 [dart-spa](https://github.com/pingbird/dart-spa) 的 SPA 路径，并做了适配与调整。两套算法不应混用于同一条寿星历法计算链。
+本项目的农历、节气、日月食、行星、恒星及实时日月位置等主天文历法计算，均以寿星天文历（万年历）[sxwnl](https://github.com/sxwnl/sxwnl) 为原始算法来源并进行 Dart 移植；独立的日出日落、真太阳时和日上中天接口另提供基于 [dart-spa](https://github.com/pingbird/dart-spa) 的 SPA 路径，并做了适配与调整。两套算法不应混用于同一条寿星历法计算链。详见下方的[项目沿革：为什么同时内置两套算法？](#why-two-architectures)。
 
 ## ✨ 特性
 
@@ -420,6 +420,8 @@ void main() {
 恒星计算的时刻参数为 J2000.0 起算的 TT/TD 儒略世纪；经纬度使用弧度，结果中的距离单位沿用寿星原版（恒星为 AU 标度）。
 
 寿星底层坐标辅助也从包入口导出，包括 `llr2xyz()`、`xyz2llr()`、`CD2DP()`、`j1_j2()`、`parallax()`、`MQC()`、`MQC2()`、`shiChaJ()`、`sunShengJ()`、`pGST2()`、`nutation()` 和 `CDnutation()`；它们保留原版的坐标单位与 J2000/TT 语义。
+
+<a id="why-two-architectures"></a>
 
 ## 🌗 项目沿革：为什么同时内置 SPA 和 SXWNL？
 
