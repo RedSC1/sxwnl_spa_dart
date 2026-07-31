@@ -357,31 +357,6 @@ EcFastResult ecFast(double jd) {
   return re;
 }
 
-double _mqc(double h) => .0002967 / math.tan(h + .003138 / (h + .08919));
-
-void _parallax(
-  List<double> z,
-  double hourAngle,
-  double latitude,
-  double elevationKm,
-) {
-  final distanceScale = z[2] < 500 ? csAU : 1.0;
-  z[2] *= distanceScale;
-  final u = math.atan(csBa * math.tan(latitude));
-  final g = z[0] + hourAngle;
-  final r0 = csREar * math.cos(u) + elevationKm * math.cos(latitude);
-  final z0 = csREar * math.sin(u) * csBa + elevationKm * math.sin(latitude);
-  final observerX = r0 * math.cos(g);
-  final observerY = r0 * math.sin(g);
-  final body = _llr2xyz(z);
-  final corrected = _xyz2llr(
-    _Vec3(body.x - observerX, body.y - observerY, body.z - z0),
-  );
-  z[0] = corrected[0];
-  z[1] = corrected[1];
-  z[2] = corrected[2] / distanceScale;
-}
-
 List<double> _lineEar(List<double> p, List<double> q, double gst) {
   final a = _llr2xyz(p);
   final b = _llr2xyz(q);
@@ -404,40 +379,6 @@ List<double> _lineEar(List<double> p, List<double> q, double gst) {
     rad2rrad(math.atan2(y, x) - gst),
     math.atan(z / csBa2 / math.sqrt(x * x + y * y)),
   ];
-}
-
-double _moonIll(double t) {
-  final t2 = t * t;
-  final t3 = t2 * t;
-  final t4 = t3 * t;
-  const deg = math.pi / 180;
-  final d =
-      (297.8502042 +
-          445267.1115168 * t -
-          .0016300 * t2 +
-          t3 / 545868 -
-          t4 / 113065000) *
-      deg;
-  final m =
-      (357.5291092 + 35999.0502909 * t - .0001536 * t2 + t3 / 24490000) * deg;
-  final moonM =
-      (134.9634114 +
-          477198.8676313 * t +
-          .0089970 * t2 +
-          t3 / 69699 -
-          t4 / 14712000) *
-      deg;
-  final phase =
-      math.pi -
-      d +
-      (-6.289 * math.sin(moonM) +
-              2.100 * math.sin(m) -
-              1.274 * math.sin(2 * d - moonM) -
-              .658 * math.sin(2 * d) -
-              .214 * math.sin(2 * moonM) -
-              .110 * math.sin(d)) *
-          deg;
-  return (1 + math.cos(phase)) / 2;
 }
 
 /// 日月实时位置计算器。
@@ -520,7 +461,7 @@ class Msc {
     mCJ = z[0];
     mCW = z[1];
     mShiJ = rad2rrad(gst + L - z[0]);
-    _parallax(z, mShiJ, fa, elevationKm);
+    parallax(z, mShiJ, fa, elevationKm);
     mCJ2 = z[0];
     mCW2 = z[1];
     mR2 = z[2];
@@ -529,7 +470,7 @@ class Msc {
     z[0] = rad2mrad(-math.pi / 2 - z[0]);
     mDJ = z[0];
     mDW = z[1];
-    if (z[1] > 0) z[1] += _mqc(z[1]);
+    if (z[1] > 0) z[1] += MQC(z[1]);
     mPJ = z[0];
     mPW = z[1];
 
@@ -543,7 +484,7 @@ class Msc {
     sCJ = z[0];
     sCW = z[1];
     sShiJ = rad2rrad(gst + L - z[0]);
-    _parallax(z, sShiJ, fa, elevationKm);
+    parallax(z, sShiJ, fa, elevationKm);
     sCJ2 = z[0];
     sCW2 = z[1];
     sR2 = z[2];
@@ -552,7 +493,7 @@ class Msc {
     z[0] = rad2mrad(-math.pi / 2 - z[0]);
     sDJ = z[0];
     sDW = z[1];
-    if (z[1] > 0) z[1] += _mqc(z[1]);
+    if (z[1] > 0) z[1] += MQC(z[1]);
     sPJ = z[0];
     sPW = z[1];
 
@@ -581,7 +522,7 @@ class Msc {
     eMRad = csSMoon / mR;
     eShadow = (csREarA / mR * rad - (959.63 - 8.794) / sR) * 51 / 50;
     eShadow2 = (csREarA / mR * rad + (959.63 + 8.794) / sR) * 51 / 50;
-    mIll = _moonIll(t);
+    mIll = moonIll(t);
     if (rad2rrad(mCJ - sCJ).abs() < 50 * math.pi / 180) {
       final center = _lineEar([mCJ, mCW, mR], [sCJ, sCW, sR * csAU], gst);
       zxJ = center[0];
@@ -1387,7 +1328,7 @@ class RsPL {
       ..mCJ = z[0]
       ..mCW = z[1]
       ..mR = z[2];
-    _parallax(z, rad2rrad(gst + L - z[0]), fa, high);
+    parallax(z, rad2rrad(gst + L - z[0]), fa, high);
     re
       ..mCJ2 = z[0]
       ..mCW2 = z[1]
@@ -1398,7 +1339,7 @@ class RsPL {
       ..sCJ = z[0]
       ..sCW = z[1]
       ..sR = z[2];
-    _parallax(z, rad2rrad(gst + L - z[0]), fa, high);
+    parallax(z, rad2rrad(gst + L - z[0]), fa, high);
     re
       ..sCJ2 = z[0]
       ..sCW2 = z[1]
@@ -1510,7 +1451,7 @@ class RsPL {
         sT[0] = lineT(g2, v, u, g2.mr + g2.sr, false);
       }
       P1 = rad2mrad(math.atan2(g2.x, g2.y));
-      V1 = rad2mrad(P1 - _shiChaJ(_pGst2(sT[0]), L, fa, g2.sCJ, g2.sCW));
+      V1 = rad2mrad(P1 - shiChaJ(pGST2(sT[0]), L, fa, g2.sCJ, g2.sCW));
 
       sT[2] = lineT(g, v, u, g.mr + g.sr, true);
       for (var i = 0; i < 3; i++) {
@@ -1518,7 +1459,7 @@ class RsPL {
         sT[2] = lineT(g2, v, u, g2.mr + g2.sr, true);
       }
       P2 = rad2mrad(math.atan2(g2.x, g2.y));
-      V2 = rad2mrad(P2 - _shiChaJ(_pGst2(sT[2]), L, fa, g2.sCJ, g2.sCW));
+      V2 = rad2mrad(P2 - shiChaJ(pGST2(sT[2]), L, fa, g2.sCJ, g2.sCW));
     }
 
     void innerContacts(double radius, String kind) {
@@ -1569,17 +1510,24 @@ class RsPL {
   }
 }
 
-double _shiChaJ(double gst, double lon, double lat, double ra, double dec) {
+/// 视差角（不是视差）。
+///
+/// 原函数名：`shiChaJ(gst, L, fa, J, W)`。
+double shiChaJ(double gst, double lon, double lat, double ra, double dec) {
   final h = gst + lon - ra;
-  return math.atan2(
-    math.sin(h),
-    math.tan(lat) * math.cos(dec) - math.sin(dec) * math.cos(h),
+  return rad2mrad(
+    math.atan2(
+      math.sin(h),
+      math.tan(lat) * math.cos(dec) - math.sin(dec) * math.cos(h),
+    ),
   );
 }
 
-double _pGst2(double jd) {
-  final deltaT = dtT(jd);
-  return pGst(jd - deltaT, deltaT);
+/// 原版 `sunShengJ()` 的太阳升降快速计算。
+///
+/// 返回 J2000.0 起算的 UT 日数；极昼和极夜均按原版返回 `0`。
+double sunShengJ(double jd, double lon, double lat, int direction) {
+  return _sunShengJ(jd, lon, lat, direction) ?? 0;
 }
 
 double? _sunShengJ(double jd, double lon, double lat, int direction) {

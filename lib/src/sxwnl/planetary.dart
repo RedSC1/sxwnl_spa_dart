@@ -9,7 +9,6 @@ library;
 
 import 'dart:math' as math;
 
-import 'delta_t.dart';
 import 'math_utils.dart';
 import 'nutation.dart';
 import 'precession.dart';
@@ -74,36 +73,13 @@ class XingXResult {
   double get altitude => horizontal[1];
 }
 
-List<double> _llr2xyz(List<double> z) => [
-  z[2] * math.cos(z[1]) * math.cos(z[0]),
-  z[2] * math.cos(z[1]) * math.sin(z[0]),
-  z[2] * math.sin(z[1]),
-];
-
-List<double> _xyz2llr(List<double> z) {
-  final r = math.sqrt(z[0] * z[0] + z[1] * z[1] + z[2] * z[2]);
-  return [rad2mrad(math.atan2(z[1], z[0])), math.asin(z[2] / r), r];
-}
-
-double _j1J2(double j1, double w1, double j2, double w2) {
-  var dJ = rad2rrad(j1 - j2);
-  final dW = w1 - w2;
-  if (dJ.abs() < 1 / 1000 && dW.abs() < 1 / 1000) {
-    dJ *= math.cos((w1 + w2) / 2);
-    return math.sqrt(dJ * dJ + dW * dW);
-  }
-  return math.acos(
-    math.sin(w1) * math.sin(w2) + math.cos(w1) * math.cos(w2) * math.cos(dJ),
-  );
-}
-
 /// 日心球坐标转地心球坐标。
 ///
 /// 原函数名：`h2g(z, a)`。
 List<double> h2g(List<double> z, List<double> a) {
-  final body = _llr2xyz(z);
-  final earth = _llr2xyz(a);
-  return _xyz2llr([body[0] - earth[0], body[1] - earth[1], body[2] - earth[2]]);
+  final body = llr2xyz(z);
+  final earth = llr2xyz(a);
+  return xyz2llr([body[0] - earth[0], body[1] - earth[1], body[2] - earth[2]]);
 }
 
 List<double> _plutoCoord(double t) {
@@ -128,7 +104,7 @@ List<double> _plutoCoord(double t) {
 }
 
 List<double> _plutoDateCoord(double t) {
-  return hDllrJ2D(t, _xyz2llr(_plutoCoord(t)));
+  return hDllrJ2D(t, xyz2llr(_plutoCoord(t)));
 }
 
 /// 行星日心黄道坐标 `[黄经, 黄纬, 向径]`。
@@ -160,7 +136,7 @@ XingXResult xingXPosition(
   final dL = zd[0];
   final dE = zd[1];
   final e = hcjj(t) + dE;
-  final gstMean = _pGST2(jd);
+  final gstMean = pGST2(jd);
   final gst = gstMean + dL * math.cos(e);
   var geocentricDistance = 0.0;
   var lightDistance = 0.0;
@@ -202,13 +178,13 @@ XingXResult xingXPosition(
   final apparentEquatorial = llrConv(apparentEcliptic, e);
   var stationEquatorial = List<double>.from(apparentEquatorial);
   final hourAngle = rad2rrad(gst + longitude - stationEquatorial[0]);
-  _applyParallax(stationEquatorial, hourAngle, latitude, 0);
+  parallax(stationEquatorial, hourAngle, latitude, 0);
   visualDistance = visualDistance == 0 ? stationEquatorial[2] : visualDistance;
   final horizontal = List<double>.from(stationEquatorial);
   horizontal[0] += piHalf - gst - longitude;
   final horizon = llrConv(horizontal, piHalf - latitude);
   horizon[0] = rad2mrad(-piHalf - horizon[0]);
-  if (horizon[1] > 0) horizon[1] += _mqc(horizon[1]);
+  if (horizon[1] > 0) horizon[1] += MQC(horizon[1]);
 
   return XingXResult(
     body: body,
@@ -269,38 +245,6 @@ List<double> _rawPlanetCoord(int body, double t) {
   return pCoord(Planet.values[body], t, -1, -1, -1);
 }
 
-void _applyParallax(
-  List<double> z,
-  double hourAngle,
-  double latitude,
-  double high,
-) {
-  final distanceScale = z[2] < 500 ? csAU : 1.0;
-  z[2] *= distanceScale;
-  final u = math.atan(csBa * math.tan(latitude));
-  final g = z[0] + hourAngle;
-  final r0 = csREar * math.cos(u) + high * math.cos(latitude);
-  final z0 = csREar * math.sin(u) * csBa + high * math.sin(latitude);
-  final observer = [r0 * math.cos(g), r0 * math.sin(g), z0];
-  final body = _llr2xyz(z);
-  final corrected = _xyz2llr([
-    body[0] - observer[0],
-    body[1] - observer[1],
-    body[2] - observer[2],
-  ]);
-  z
-    ..[0] = corrected[0]
-    ..[1] = corrected[1]
-    ..[2] = corrected[2] / distanceScale;
-}
-
-double _pGST2(double jd) {
-  final dt = dtT(jd);
-  return pGst(jd - dt, dt);
-}
-
-double _mqc(double h) => .0002967 / math.tan(h + .003138 / (h + .08919));
-
 String _radText(double value, bool rightAscension) {
   var units = value * (rightAscension ? 12 / math.pi : 180 / math.pi);
   final sign = !rightAscension && units < 0 ? '-' : '';
@@ -339,7 +283,7 @@ double xingJJ(Planet planet, double t, int jing) {
   }
   final sunLon = earth[0] + math.pi;
   final sunLat = -earth[1];
-  return _j1J2(body[0], body[1], sunLon, sunLat);
+  return j1J2(body[0], body[1], sunLon, sunLat);
 }
 
 /// 水星或金星的东/西大距。

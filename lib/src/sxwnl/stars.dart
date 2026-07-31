@@ -11,7 +11,6 @@ export 'ephb_star_data.dart' show HXK, xz88;
 
 import 'dart:math' as math;
 
-import 'delta_t.dart';
 import 'ephb_star_data.dart';
 import 'math_utils.dart';
 import 'nutation.dart';
@@ -330,7 +329,7 @@ StarPosition _calcStarPosition(
     z[0] += piHalf - gst - longitude;
     z = llrConv(z, piHalf - latitude);
     z[0] = rad2mrad(-piHalf - z[0]);
-    if (z[1] > 0) z[1] += _mqc(z[1]);
+    if (z[1] > 0) z[1] += MQC(z[1]);
   }
   return StarPosition(
     star: star,
@@ -451,11 +450,6 @@ List<double> sun2000(double t, int n) {
   return hDllrD2J(t, result);
 }
 
-double pGST2(double jd) {
-  final dt = dtT(jd);
-  return pGst(jd - dt, dt);
-}
-
 double _sexagesimal(String text, {required bool hours}) {
   final negative = text.trimLeft().startsWith('-');
   final numbers = RegExp(
@@ -481,5 +475,3 @@ String _formatAngle(double value, bool rightAscension) {
   final seconds = (minutesFloat - minutes) * 60;
   return '$sign$first°${minutes.toString().padLeft(2, '0')}′${seconds.toStringAsFixed(2)}″';
 }
-
-double _mqc(double h) => .0002967 / math.tan(h + .003138 / (h + .08919));

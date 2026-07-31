@@ -180,6 +180,9 @@ List<double> nutationFull(double t, double zq) {
   return [dL / 10000000 / rad, dE / 10000000 / rad];
 }
 
+/// 原版函数名的兼容入口。
+List<double> nutation(double t, double zq) => nutationFull(t, zq);
+
 /// 章动修正赤道坐标。
 ///
 /// 原函数名：`CDnutation(z, E, dL, dE)`。
@@ -192,6 +195,10 @@ List<double> cDnutation(List<double> z, double e, double dL, double dE) {
   result[0] = rad2mrad(result[0]);
   return result;
 }
+
+/// 原始大小写命名的兼容别名。
+List<double> CDnutation(List<double> z, double e, double dL, double dE) =>
+    cDnutation(z, e, dL, dE);
 
 // ==================== 黄赤交角 ====================
 

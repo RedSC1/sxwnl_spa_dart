@@ -1,3 +1,5 @@
+// ignore_for_file: non_constant_identifier_names
+
 /// sxwnl 天文数学工具函数和常量。
 ///
 /// 移植自寿星万年历 (sxwnl) eph0.js 的基础数学工具部分。
@@ -5,6 +7,8 @@
 library;
 
 import 'dart:math' as math;
+
+import 'delta_t.dart';
 
 // ==================== 天文常量 ====================
 
@@ -117,6 +121,23 @@ double rad2rrad(double v) {
 
 // ==================== 坐标转换 ====================
 
+/// 球面坐标转直角坐标 `[经度, 纬度, 距离] -> [x, y, z]`。
+List<double> llr2xyz(List<double> z) {
+  final r = z[2];
+  final cosW = math.cos(z[1]);
+  return [
+    r * cosW * math.cos(z[0]),
+    r * cosW * math.sin(z[0]),
+    r * math.sin(z[1]),
+  ];
+}
+
+/// 直角坐标转球面坐标 `[x, y, z] -> [经度, 纬度, 距离]`。
+List<double> xyz2llr(List<double> xyz) {
+  final r = math.sqrt(xyz[0] * xyz[0] + xyz[1] * xyz[1] + xyz[2] * xyz[2]);
+  return [rad2mrad(math.atan2(xyz[1], xyz[0])), math.asin(xyz[2] / r), r];
+}
+
 /// 黄道赤道坐标变换
 ///
 /// [z] 为 [经度, 纬度, 距离] 形式的数组，距离不参与变换。
@@ -135,6 +156,83 @@ List<double> llrConv(List<double> z, double e) {
   final j = math.atan2(math.sin(jj) * cosE - sinW / cosW * sinE, math.cos(jj));
   var W = math.asin(sinW * cosE + cosW * math.sin(e) * math.sin(jj));
   return [rad2mrad(j), W, if (z.length > 2) z[2] else 0.0];
+}
+
+/// 赤道坐标转地平坐标。
+///
+/// 原函数名：`CD2DP(z, L, fa, gst)`。输入经纬度和恒星时均为弧度，
+/// 返回 `[方位角, 高度角, 距离]`；不包含大气折射。
+List<double> cD2DP(List<double> z, double L, double fa, double gst) {
+  final result = List<double>.from(z);
+  result[0] += piHalf - gst - L;
+  final horizon = llrConv(result, piHalf - fa);
+  horizon[0] = rad2mrad(-piHalf - horizon[0]);
+  return horizon;
+}
+
+/// 原始大小写命名的兼容别名。
+List<double> CD2DP(List<double> z, double L, double fa, double gst) =>
+    cD2DP(z, L, fa, gst);
+
+/// 两个球面坐标的角距离。
+///
+/// 原函数名：`j1_j2(J1, W1, J2, W2)`。
+double j1J2(double j1, double w1, double j2, double w2) {
+  var dJ = rad2rrad(j1 - j2);
+  final dW = w1 - w2;
+  if (dJ.abs() < 1 / 1000 && dW.abs() < 1 / 1000) {
+    dJ *= math.cos((w1 + w2) / 2);
+    return math.sqrt(dJ * dJ + dW * dW);
+  }
+  return math.acos(
+    math.sin(w1) * math.sin(w2) + math.cos(w1) * math.cos(w2) * math.cos(dJ),
+  );
+}
+
+/// 原始下划线命名的兼容别名。
+double j1_j2(double j1, double w1, double j2, double w2) =>
+    j1J2(j1, w1, j2, w2);
+
+/// 平均大气折射修正（真高度角转视高度角）。
+///
+/// 原函数名：`MQC(h)`；仅适用于地平线以上的真高度角。
+double MQC(double h) => .0002967 / math.tan(h + .003138 / (h + .08919));
+
+/// 反向平均大气折射修正（视高度角转真高度角）。
+///
+/// 原函数名：`MQC2(ho)`。
+double MQC2(double ho) => -0.0002909 / math.tan(ho + .002227 / (ho + .07679));
+
+/// 传入力学时 J2000 日数，返回平恒星时。
+///
+/// 原函数名：`pGST2(jd)`。
+double pGST2(double jd) {
+  final dt = dtT(jd);
+  return pGst(jd - dt, dt);
+}
+
+/// 地平视差修正。
+///
+/// 原函数名：`parallax(z, H, fa, high)`。输入坐标的距离可以是 AU 或
+/// 千米；小于 500 的距离按 AU 处理，返回值直接写回 [z]。
+void parallax(List<double> z, double hourAngle, double latitude, double high) {
+  final distanceScale = z[2] < 500 ? csAU : 1.0;
+  z[2] *= distanceScale;
+  final u = math.atan(csBa * math.tan(latitude));
+  final g = z[0] + hourAngle;
+  final r0 = csREar * math.cos(u) + high * math.cos(latitude);
+  final z0 = csREar * math.sin(u) * csBa + high * math.sin(latitude);
+  final observer = [r0 * math.cos(g), r0 * math.sin(g), z0];
+  final body = llr2xyz(z);
+  final corrected = xyz2llr([
+    body[0] - observer[0],
+    body[1] - observer[1],
+    body[2] - observer[2],
+  ]);
+  z
+    ..[0] = corrected[0]
+    ..[1] = corrected[1]
+    ..[2] = corrected[2] / distanceScale;
 }
 
 // ==================== 恒星时计算 ====================
