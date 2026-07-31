@@ -73,8 +73,9 @@ class SZJ {
 
   /// 计算连续 [n] 天的太阳/月亮升、中天、降落。
   ///
-  /// [jd] 为当地起始日中午对应的 J2000.0 起算 UT 儒略日，[Jdl]、[Wdl]
-  /// 为东经、北纬（弧度），[sq] 为时区小时。返回值中的时间字符串为当地钟表时。
+  /// [jd] 为当地民用起始日中午对应的 J2000.0 儒略日，[Jdl]、[Wdl]
+  /// 为东经、北纬（弧度），[sq] 为时区小时（东区为正）。内部先按
+  /// `-sq / 24` 转为 UT，再将结果格式化为当地钟表时。
   /// 原函数名：`SZJ.calcRTS(jd, n, Jdl, Wdl, sq)`。
   List<SZJDailyResult> calcRTS(
     double jd,
@@ -86,7 +87,9 @@ class SZJ {
     if (n < 0) throw ArgumentError.value(n, 'n', 'must be non-negative');
     L = Jdl;
     fa = Wdl;
-    final timezoneDays = sq / 24;
+    // jd is the local civil-day noon baseline. A positive UTC offset means
+    // that the corresponding UT instant is earlier, hence the minus sign.
+    final timezoneDays = -sq / 24;
     rts
       ..clear()
       ..addAll(List.generate(n, (_) => SZJDailyResult()));

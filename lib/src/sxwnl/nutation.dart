@@ -167,8 +167,8 @@ List<double> nutationFull(double t, double zq) {
               129596581.0481 * nuTab[i + 1] +
               1739527262.8478 * nuTab[i + 2] +
               1602961601.2090 * nuTab[i + 3] +
-              6962890.5431 * nuTab[i + 4]);
-      if (period < zq) continue;
+              -6962890.5431 * nuTab[i + 4]);
+      if (period.abs() < zq) continue;
     }
     dL +=
         (nuTab[i + 5] + nuTab[i + 6] * t) * math.sin(c) +

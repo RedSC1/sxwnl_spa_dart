@@ -72,7 +72,7 @@ void main() {
     );
   });
 
-  test('SZJ.calcRTS matches the original multi-day wrapper', () {
+  test('SZJ.calcRTS applies positive timezone offsets as local clock time', () {
     final szj = SZJ();
     final days = szj.calcRTS(
       9500,
@@ -82,14 +82,14 @@ void main() {
       8,
     );
     expect(days, hasLength(2));
-    expect(days[0].s, '15:36:14');
-    expect(days[0].z, '20:19:43');
-    expect(days[0].j, '01:03:23');
-    expect(days[0].Ms, '01:54:03');
-    expect(days[0].Mz, '09:38:43');
-    expect(days[0].Mj, '17:11:03');
-    expect(days[1].s, '15:36:13');
-    expect(days[1].Mz, '10:33:57');
+    expect(days[0].s, '07:36:14');
+    expect(days[0].z, '12:19:16');
+    expect(days[0].j, '17:02:29');
+    expect(days[0].Ms, '17:54:04');
+    expect(days[0].Mz, '00:37:40');
+    expect(days[0].Mj, '08:30:01');
+    expect(days[1].s, '07:36:14');
+    expect(days[1].Mz, '01:38:43');
   });
 
   test('xingX structured positions match the original eph.js chain', () {
@@ -104,16 +104,45 @@ void main() {
     expect(jupiter.apparentEquatorial[0], closeTo(1.965828691022156, 1e-14));
     expect(jupiter.geocentricDistance, closeTo(4.235406145956073, 1e-14));
     expect(jupiter.lightDistance, closeTo(4.2353931810880745, 1e-14));
-    expect(jupiter.visualDistance, closeTo(4.235443693451683, 1e-14));
+    expect(jupiter.visualDistance, closeTo(4.235424312070975, 1e-14));
     expect(jupiter.horizontal[0], closeTo(1.4484733917594301, 1e-11));
     expect(jupiter.horizontal[1], closeTo(0.47358255561874724, 1e-11));
     final moon = xingXPosition(10, 9500, lon, lat);
-    expect(moon.apparentEcliptic[0], closeTo(2.0759743333819642, 1e-14));
-    expect(moon.apparentEquatorial[0], closeTo(2.1264462522079226, 1e-12));
+    expect(moon.apparentEcliptic[0], closeTo(2.0759709333819956, 1e-14));
+    expect(moon.apparentEcliptic[1], closeTo(0.058857452205986, 1e-14));
+    expect(moon.apparentEquatorial[0], closeTo(2.126442676141616, 1e-12));
     expect(moon.geocentricDistance, closeTo(366009.08624007454, 1e-8));
     expect(moon.lightDistance, closeTo(365999.5904727084, 1e-8));
-    expect(moon.visualDistance, closeTo(366009.02683804405, 1e-8));
+    expect(moon.visualDistance, closeTo(363770.6150434912, 1e-8));
     expect(xingX(4, 9500, lon, lat), contains('视赤经'));
+  });
+
+  test(
+    'ephB constellation lookup preserves centers and full English names',
+    () {
+      final lyra = schHXK('Lyr');
+      expect(lyra, contains('中心天琴座Lyr方'));
+      expect(
+        getConstellations()
+            .firstWhere((item) => item.abbreviation == 'Com')
+            .englishName,
+        'Coma Berenices',
+      );
+      expect(
+        getConstellations()
+            .firstWhere((item) => item.abbreviation == 'UMa')
+            .englishName,
+        'Ursa Major',
+      );
+    },
+  );
+
+  test('hxCalc formats right ascension with hour units', () {
+    final star = getHXK(HXK[0]).first;
+    final text = hxCalc(0, [star], 0, 0, 0, 0);
+    expect(text, contains('h'));
+    expect(text, contains('m'));
+    expect(text, contains('s'));
   });
 }
 

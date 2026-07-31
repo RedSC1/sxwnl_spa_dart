@@ -26,6 +26,10 @@ void main() {
     );
 
     expect(nutation(0, 0), hasLength(2));
+    expect(
+      nutation(0.25, 30),
+      orderedCloseTo([2.923950718364418e-7, 0.00004160068880597693], 1e-15),
+    );
     expect(CDnutation([0.1, 0.2, 1], 0.4, 1e-5, 2e-5), hasLength(3));
     expect(pGST2(0), isA<double>());
     expect(dtT(0), greaterThan(0));

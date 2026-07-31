@@ -1336,7 +1336,7 @@ class RsGS {
       );
       if (point.valid) {
         _push([point.j, point.w], p1);
-      } else if (math.sqrt(x * x + y * y) > a1) {
+      } else if (x * x + y * y > a1) {
         final fallback = _bse2db(_Vec3(x, y, 0), frame);
         _push(fallback, p1);
       }
@@ -1353,7 +1353,7 @@ class RsGS {
       );
       if (point.valid) {
         _push([point.j, point.w], p2);
-      } else if (math.sqrt(x * x + y * y) > a2) {
+      } else if (x * x + y * y > a2) {
         final fallback = _bse2db(_Vec3(x, y, 0), frame);
         _push(fallback, p2);
       }

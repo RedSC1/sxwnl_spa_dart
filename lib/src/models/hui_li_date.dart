@@ -6,9 +6,11 @@ import '../astro_date_time.dart';
 ///
 /// 回历（伊斯兰历、Hijri）与中国农历是两套独立历法。寿星原版
 /// `oba.getHuiLi()` 使用固定的 30 年回历周期，而不是根据观测新月
-/// 或地点重新判定月份；本模型保留这套原版语义。
+/// 或地点重新判定月份；本模型保留这套原版语义。回历纪元以前继续按同一
+/// 周期作序推算，因此公元前日期可能得到 `year <= 0` 的序推年份；这不是
+/// 对历史伊斯兰历纪年的断言，而是为了让算术模型覆盖完整的天文日期范围。
 class HuiLiDate {
-  /// 回历年，从 1 AH 开始。
+  /// 回历年。正常回历日期为 `1 AH` 起；回历纪元以前的序推结果可为 0 或负数。
   final int year;
 
   /// 回历月，范围为 1..12。
@@ -18,8 +20,7 @@ class HuiLiDate {
   final int day;
 
   const HuiLiDate({required this.year, required this.month, required this.day})
-    : assert(year >= 1),
-      assert(month >= 1 && month <= 12),
+    : assert(month >= 1 && month <= 12),
       assert(day >= 1 && day <= 30);
 
   /// 从寿星约定的北京时间 J2000.0 相对日数计算回历日期。

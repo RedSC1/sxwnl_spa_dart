@@ -162,12 +162,14 @@ String schHXK(String key) {
     final packed = xz88[i];
     final abbreviation = packed.substring(3, 6);
     if (abbreviation != key) continue;
+    final centerRa = xz88[i + 2];
+    final centerDec = xz88[i + 3];
     final ra =
-        packed.substring(0, 5) +
-        ' ${(double.parse(packed.substring(6, 8)) * .6).toStringAsFixed(1)}';
+        centerRa.substring(0, 5) +
+        ' ${(double.parse(centerRa.substring(6, 8)) * .6).toStringAsFixed(1)}';
     final dec =
-        xz88[i + 3].substring(0, 6) +
-        ' ${(double.parse(xz88[i + 3].substring(7, 9)) * .6).toStringAsFixed(1)}';
+        centerDec.substring(0, 6) +
+        ' ${(double.parse(centerDec.substring(7, 9)) * .6).toStringAsFixed(1)}';
     result.write(
       '#*$ra,$dec,0,0,0,0.0,中心${packed.substring(0, 6)}方,${xz88[i + 4]}',
     );
@@ -180,15 +182,18 @@ String schHXK(String key) {
 List<Constellation> getConstellations() {
   return [
     for (var i = 0; i < xz88.length; i += 5)
-      Constellation(
-        name: xz88[i].substring(0, 3),
-        abbreviation: xz88[i].substring(3, 6),
-        areaSquareDegrees: double.parse(xz88[i + 1]),
-        centerRightAscension: _sexagesimal(xz88[i + 2], hours: true),
-        centerDeclination: _sexagesimal(xz88[i + 3], hours: false),
-        quadrantFamily: xz88[i + 4].split(' ').take(2).join(' '),
-        englishName: xz88[i + 4].split(' ').last,
-      ),
+      (() {
+        final descriptor = xz88[i + 4].trim().split(RegExp(r'\s+'));
+        return Constellation(
+          name: xz88[i].substring(0, 3),
+          abbreviation: xz88[i].substring(3, 6),
+          areaSquareDegrees: double.parse(xz88[i + 1]),
+          centerRightAscension: _sexagesimal(xz88[i + 2], hours: true),
+          centerDeclination: _sexagesimal(xz88[i + 3], hours: false),
+          quadrantFamily: descriptor.take(2).join(' '),
+          englishName: descriptor.skip(2).join(' '),
+        );
+      })(),
   ];
 }
 
@@ -473,5 +478,8 @@ String _formatAngle(double value, bool rightAscension) {
   final minutesFloat = (degrees - first) * 60;
   final minutes = minutesFloat.floor();
   final seconds = (minutesFloat - minutes) * 60;
+  if (rightAscension) {
+    return '${first.toString().padLeft(2, '0')}h${minutes.toString().padLeft(2, '0')}m${seconds.toStringAsFixed(2)}s';
+  }
   return '$sign$first°${minutes.toString().padLeft(2, '0')}′${seconds.toStringAsFixed(2)}″';
 }

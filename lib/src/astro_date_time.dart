@@ -307,23 +307,25 @@ class AstroDateTime implements Comparable<AstroDateTime> {
 
   /// 两个日期之间的时间差。
   Duration difference(AstroDateTime other) {
-    final diffDays = toJulianDay() - other.toJulianDay();
+    final diffDays = toStdJulianDay() - other.toStdJulianDay();
     return Duration(
       microseconds: (diffDays * Duration.microsecondsPerDay).round(),
     );
   }
 
   /// 是否在 [other] 之后。
-  bool isAfter(AstroDateTime other) => toJulianDay() > other.toJulianDay();
+  bool isAfter(AstroDateTime other) =>
+      toStdJulianDay() > other.toStdJulianDay();
 
   /// 是否在 [other] 之前。
-  bool isBefore(AstroDateTime other) => toJulianDay() < other.toJulianDay();
+  bool isBefore(AstroDateTime other) =>
+      toStdJulianDay() < other.toStdJulianDay();
 
   // --------------- Comparable / Object ---------------
 
   @override
   int compareTo(AstroDateTime other) {
-    return toJulianDay().compareTo(other.toJulianDay());
+    return toStdJulianDay().compareTo(other.toStdJulianDay());
   }
 
   @override

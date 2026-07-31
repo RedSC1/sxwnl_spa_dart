@@ -155,7 +155,8 @@ XingXResult xingXPosition(
     final earthDifference = h2g(earth, earthAtReception);
     earthDifference[2] *= csAU;
     lightDistance = h2g(moon, earthDifference)[2];
-    moon[0] = rad2mrad(moon[0] + dL);
+    moon[0] = rad2mrad(moon[0] + gxcMoonLon(t) + dL);
+    moon[1] += gxcMoonLat(t);
     apparentEcliptic = moon;
   } else {
     final earth = eCoord(t, -1, -1, -1);
@@ -179,7 +180,9 @@ XingXResult xingXPosition(
   var stationEquatorial = List<double>.from(apparentEquatorial);
   final hourAngle = rad2rrad(gst + longitude - stationEquatorial[0]);
   parallax(stationEquatorial, hourAngle, latitude, 0);
-  visualDistance = visualDistance == 0 ? stationEquatorial[2] : visualDistance;
+  // The public result is the observer-dependent distance after parallax,
+  // not the pre-parallax geocentric/light-time distance calculated above.
+  visualDistance = stationEquatorial[2];
   final horizontal = List<double>.from(stationEquatorial);
   horizontal[0] += piHalf - gst - longitude;
   final horizon = llrConv(horizontal, piHalf - latitude);

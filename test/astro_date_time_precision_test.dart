@@ -100,6 +100,29 @@ void main() {
     });
 
     test(
+      'orders and subtracts timezone-aware values by represented instant',
+      () {
+        final beijing = AstroDateTime.fromStdJ2000(0, timeZone: 8);
+        final bangkok = beijing.toTimeZone(7);
+
+        expect(beijing.difference(bangkok).inMicroseconds.abs(), lessThan(200));
+        expect(beijing.compareTo(bangkok), 0);
+        expect(beijing.isBefore(bangkok), isFalse);
+        expect(beijing.isAfter(bangkok), isFalse);
+      },
+    );
+
+    test('attaches a proleptic arithmetic Hijri date to BCE DayInfo', () {
+      final day = getDayRange(
+        AstroDateTime(0, 1, 1),
+        AstroDateTime(0, 1, 1),
+      ).single;
+
+      expect(day.huiLiDate.month, inInclusiveRange(1, 12));
+      expect(day.huiLiDate.day, inInclusiveRange(1, 30));
+    });
+
+    test(
       'does not snap representable sub-second JD values to whole seconds',
       () {
         final original = AstroDateTime(2000, 1, 1, 12, 0, 0, 0.00004);
