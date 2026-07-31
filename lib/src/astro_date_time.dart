@@ -430,11 +430,15 @@ class AstroDateTime implements Comparable<AstroDateTime> {
       f -= 1;
       z += 1;
     }
-    // 将反解结果归一到微秒；JD 的浮点误差可能把整秒推到相邻秒的几十
-    // 微秒内，例如把 J2000.0 表示成 11:59:59.999987，此时应吸附回整秒。
+    // 将反解结果归一到微秒。JD 是绝对大数，浮点加法可能把整秒推到
+    // 相邻秒的十几微秒内（例如 J2000.0 加 7 小时）；只在误差小于当前
+    // JD 可表示分辨率的一半时吸附回整秒，避免吞掉真实可表示的小数秒。
     final rawSecondsOfDay = f * 86400.0;
     final nearestSecond = rawSecondsOfDay.roundToDouble();
-    var secondsOfDay = (rawSecondsOfDay - nearestSecond).abs() < 5e-5
+    const machineEpsilon = 2.220446049250313e-16;
+    final jdResolutionSeconds = jdShifted.abs() * machineEpsilon * 86400.0;
+    final snapTolerance = jdResolutionSeconds / 2;
+    var secondsOfDay = (rawSecondsOfDay - nearestSecond).abs() < snapTolerance
         ? nearestSecond
         : (rawSecondsOfDay * Duration.microsecondsPerSecond).round() /
               Duration.microsecondsPerSecond;

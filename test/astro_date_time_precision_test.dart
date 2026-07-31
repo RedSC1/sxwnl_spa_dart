@@ -99,6 +99,16 @@ void main() {
       expect(relabeled.timeZone, 7.0);
     });
 
+    test(
+      'does not snap representable sub-second JD values to whole seconds',
+      () {
+        final original = AstroDateTime(2000, 1, 1, 12, 0, 0, 0.00004);
+        final roundTrip = AstroDateTime.fromJulianDay(original.toJulianDay());
+
+        expect(roundTrip.preciseSecond, closeTo(0.00004, 2e-5));
+      },
+    );
+
     test('add, subtract, and difference retain sub-second durations', () {
       final start = AstroDateTime(2025, 1, 1, 23, 59, 59, 0.125);
       final duration = const Duration(microseconds: 1_125_000);
