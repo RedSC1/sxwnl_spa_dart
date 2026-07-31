@@ -130,6 +130,19 @@ void main() {
 }
 ```
 
+#### 回历 / 伊斯兰历（Hijri）
+
+`HuiLiDate` / `HijriDate` 移植的是寿星万年历 `oba.getHuiLi()` 的**算术回历**：
+按固定的 30 年（10631 日）周期计算，不根据观测新月、地点或当地教法重新判月。
+输入日期按寿星万年历的北京时间民用日归属处理；`fromBJJ2000()` 接收北京时间
+J2000.0 相对日数，`fromSolar()` 接收 `AstroDateTime`。
+
+```dart
+final hijri = HuiLiDate.fromSolar(AstroDateTime(2000, 1, 1));
+print(hijri); // 1420-9-24 AH
+print('${hijri.Hyear}-${hijri.Hmonth}-${hijri.Hday}');
+```
+
 ### 5. 类型安全的干支计算 (Typed Gan-zhi)
 
 ```dart
@@ -431,6 +444,7 @@ void main() {
 *   说明：未随包附带 sxwnl 原始源码，运行对比脚本需自行从 sxwnl 仓库下载后放入 test/sxwnl_js
 *   基准数据：test/compute_*_js.js 生成 js_*.json
 *   测试项不仅包含核心算法本身，也包含了与原版同样的查表修正（如 SSQ 的历史历法修正数据）。
+*   回历专项回归：`test/test_hui_li_date.dart` 覆盖寿星原版固定日期对照、30 年周期重复性、闰年 12 月 30 日边界、北京时间跨日及 `DayInfo` 集成，共 5 项。
 *   具体数值（由于太阳位置算法实现不同，日出/日上中天/日落存在秒级差异属于正常现象）：
 
 | 指标 | 参数 | avg_diff_seconds | max_diff_seconds | exact_second | lt_1s | gt_1s |
