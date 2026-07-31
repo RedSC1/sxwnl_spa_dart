@@ -348,22 +348,24 @@ List<double> xingLiu0(Planet planet, double t, int n, double lightTime) =>
 /// 行星顺留或逆留时刻。
 ///
 /// [direct] 为 true 求顺留，为 false 求逆留。原函数名：`xingLiu(xt,t,sn)`。
+/// 冥王星使用已移植的 `pCoord()` 经度参与迭代；这是对原版
+/// `XL0_calc(8, ...)` 越界问题的兼容性修正。
 double xingLiu(Planet planet, double t, bool direct) {
-  if (planet == Planet.earth || planet == Planet.pluto) {
+  if (planet == Planet.earth) {
     throw ArgumentError.value(
       planet,
       'planet',
-      'Stationary events are supported for Mercury through Neptune only',
+      'Stationary events are supported for Mercury through Pluto',
     );
   }
-  const periods = [116, 584, 780, 399, 378, 370, 367];
-  const offsets = [17.4, 28, 52, 82, 86, 88, 89];
+  const periods = [116, 584, 780, 399, 378, 370, 367, 367];
+  const offsets = [17.4, 28, 52, 82, 86, 88, 89, 90];
   final xt = planet.index;
   final hh = periods[xt - 1] / 36525;
   var v = pi2 / hh;
   if (xt > 2) v = -v;
   for (var i = 0; i < 6; i++) {
-    t -= rad2rrad(xl0Calc(xt, 0, t, 8) - xl0Calc(0, 0, t, 8)) / v;
+    t -= rad2rrad(_eventBodyLongitude(planet, t, 8) - xl0Calc(0, 0, t, 8)) / v;
   }
   final tc = offsets[xt - 1] / 36525;
   if (direct) {
@@ -472,17 +474,22 @@ List<double> xingSP(
   double tp,
 ) => _xingSP(planet, t, n, w0, ts, tp);
 
+double _eventBodyLongitude(Planet planet, double t, int n) {
+  if (planet == Planet.pluto) return pCoord(planet, t, n, n, n)[0];
+  return xl0Calc(planet.index, 0, t, n);
+}
+
 /// 行星合/冲（内行星为上、下合）时刻与黄纬差 `[t, Δlat]`。
 /// [oppositionOrInferior] 为 true 求冲或下合。原函数名：`xingHR(xt,t,f)`。
 List<double> xingHR(Planet planet, double t, bool oppositionOrInferior) {
-  if (planet == Planet.earth || planet == Planet.pluto) {
+  if (planet == Planet.earth) {
     throw ArgumentError.value(
       planet,
       'planet',
-      'Conjunction/opposition events are supported for Mercury through Neptune only',
+      'Conjunction/opposition events are supported for Mercury through Pluto',
     );
   }
-  const periods = [116, 584, 780, 399, 378, 370, 367];
+  const periods = [116, 584, 780, 399, 378, 370, 367, 367];
   final xt = planet.index;
   var heliocentricTarget = math.pi;
   var geocentricTarget = 0.0;
@@ -495,7 +502,9 @@ List<double> xingHR(Planet planet, double t, bool oppositionOrInferior) {
   for (var i = 0; i < 6; i++) {
     t -=
         rad2rrad(
-          xl0Calc(xt, 0, t, 8) - xl0Calc(0, 0, t, 8) - heliocentricTarget,
+          _eventBodyLongitude(planet, t, 8) -
+              xl0Calc(0, 0, t, 8) -
+              heliocentricTarget,
         ) /
         v;
   }

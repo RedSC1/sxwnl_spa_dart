@@ -353,14 +353,18 @@ void main() {
       expect(t026[0], closeTo(5.294013982349257, 1e-12));
       expect(t026[1], closeTo(-.0675019681346099, 1e-12));
       expect(t026[2], closeTo(35.42131186535351, 1e-12));
-      expect(
-        () => xingLiu(Planet.pluto, .26, true),
-        throwsA(isA<ArgumentError>()),
-      );
-      expect(
-        () => xingHR(Planet.pluto, .26, true),
-        throwsA(isA<ArgumentError>()),
-      );
+      final plutoStationary = xingLiu(Planet.pluto, .26, true);
+      final plutoRetrograde = xingLiu(Planet.pluto, .26, false);
+      final plutoOpposition = xingHR(Planet.pluto, .26, true);
+      final plutoConjunction = xingHR(Planet.pluto, .26, false);
+      expect(plutoStationary.isFinite, isTrue);
+      expect(plutoRetrograde.isFinite, isTrue);
+      expect(plutoOpposition, hasLength(2));
+      expect(plutoOpposition[0].isFinite, isTrue);
+      expect(plutoOpposition[1].isFinite, isTrue);
+      expect(plutoConjunction, hasLength(2));
+      expect(plutoConjunction[0].isFinite, isTrue);
+      expect(plutoConjunction[1].isFinite, isTrue);
     });
 
     test('2003 Mars opposition agrees with the SEDS external oracle', () {
