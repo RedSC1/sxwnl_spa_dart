@@ -53,6 +53,29 @@ void main() {
 }
 ```
 
+### 时间尺度与时区
+
+`AstroDateTime` 的 `toJulianDay()` / `toJ2000()` 保持原有的时区中立
+行为，不会根据元数据自动偏移。直接构造的对象以及 `fromJulianDay()` /
+`fromJ2000()` 的 `timeZone` 都是 `null`，用于兼容旧代码。
+
+需要明确标记时间表示时：
+
+- `fromBJJ2000()`：寿星万年历约定的北京时间 J2000 日数，标记为 `UTC+8`，不再额外偏移。
+- `fromBJJulianDay()`：寿星万年历约定的北京时间绝对 JD，标记为 `UTC+8`。
+- `fromStdJ2000(jd, timeZone: 8)`：先按原始 J2000 行为反解，再将显示时间加 8 小时并标记为 `UTC+8`。
+- `toStdJulianDay()` / `toStdJ2000()`：根据对象的 `timeZone` 转回 UTC+0；时区为空时不偏移。
+
+寿星 `SSQ` / `JieQi` 等接口返回的“北京时间 J2000 日数”可直接使用
+`AstroDateTime.fromBJJ2000()`，不要再额外加 8 小时。
+
+例如，将 UTC J2000 日数显示为北京时间：
+
+```dart
+final utcJ2000 = AstroDateTime(2025, 1, 1, 0, 0, 0, 0.5).toJ2000();
+final beijing = AstroDateTime.fromStdJ2000(utcJ2000, timeZone: 8);
+```
+
 ### 2. 农历排盘 (Lunar Calendar)
 
 ```dart
@@ -65,7 +88,7 @@ void main() {
 
   print('闰月索引 (Leap Month Index): ${res.leap}');
   for (int i = 0; i < 14; i++) {
-    final dt = AstroDateTime.fromJ2000(res.hs[i]);
+    final dt = AstroDateTime.fromBJJ2000(res.hs[i]);
     print('${res.ym[i]}月 (Month): ${dt.year}-${dt.month}-${dt.day}');
   }
 }
@@ -82,7 +105,7 @@ void main() {
   final dt = AstroDateTime(2023, 2, 4, 12, 0, 0);
   final loc = Location(116.4, 39.9);
   final trueSolar = calcTrueSolarTime(dt, loc);
-  final jdUt = dt.toJ2000() - 8 / 24;
+  final jdUt = dt.subtract(const Duration(hours: 8)).toJ2000();
   final bazi = calcGanZhi(jdUt, trueSolar.trueSolarTime.toJ2000());
   print('八字 (Gan-zhi): $bazi');
 }

@@ -7,7 +7,7 @@ void main() {
     test('1. 压线测试 (Exact Boundary)：目标时间正好是交节时刻', () {
       // 2025年立春的精确时刻（北京时间）大约是 2025-02-03 22:10:28
       final result = getSpecificJieQi(2025, 21); // 立春序号是21 (基于春分0)
-      final target = AstroDateTime.fromJ2000(result);
+      final target = AstroDateTime.fromBJJ2000(result);
 
       final prev = getPrevJieQi(target);
       final next = getNextJieQi(target);
@@ -52,7 +52,7 @@ void main() {
       final p1 = getPrevJieQi(today);
       expect(p1?.name, equals('立秋'));
 
-      final targetDate = AstroDateTime.fromJ2000(p1!.jd);
+      final targetDate = AstroDateTime.fromBJJ2000(p1!.jd);
       print('Logical Closure DEBUG:');
       print('  p1!.jd = ${p1.jd}');
       print(
@@ -64,7 +64,7 @@ void main() {
 
       // 下一个 -> 前一个
       final n2 = getNextJieQi(today);
-      final p2 = getPrevJieQi(AstroDateTime.fromJ2000(n2!.jd));
+      final p2 = getPrevJieQi(AstroDateTime.fromBJJ2000(n2!.jd));
       expect(p2?.name, equals(n2.name), reason: '节气当天的Prev应该是自己');
     });
 

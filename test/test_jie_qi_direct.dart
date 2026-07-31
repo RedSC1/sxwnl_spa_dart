@@ -74,17 +74,17 @@ void main() {
   // 2025春分 (0度)
   double jdChunfen = qiAccurate(2 * pi * 25.0);
   print('2025 Spring Equinox JD: $jdChunfen');
-  print('Time: ${AstroDateTime.fromJ2000(jdChunfen)}');
+  print('Time: ${AstroDateTime.fromBJJ2000(jdChunfen)}');
 
   // Test 3: Test SSQ public methods
   print('\n--- Test 3: SSQ public methods (qiHigh, soHigh) ---');
   var ssq = SSQ();
   // 随便找个时间点验证方法可调用
   double jdTest = ssq.qiHigh(2 * pi * 25.0);
-  print('SSQ.qiHigh(2025春分): ${AstroDateTime.fromJ2000(jdTest)}');
+  print('SSQ.qiHigh(2025春分): ${AstroDateTime.fromBJJ2000(jdTest)}');
 
   double jdSo = ssq.soHigh(2 * pi * 123.0); // 随便一个合朔角度
-  print('SSQ.soHigh(random): ${AstroDateTime.fromJ2000(jdSo)}');
+  print('SSQ.soHigh(random): ${AstroDateTime.fromBJJ2000(jdSo)}');
 
   print('\nSUCCESS: All private methods are now public and callable!');
 }

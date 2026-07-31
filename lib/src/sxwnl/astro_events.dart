@@ -58,7 +58,7 @@ class AstroEvents {
         // 【高精度修正】：直接调用底层的牛顿迭代定朔
         double phaseJD = soAccurate(W);
 
-        final phaseDate = AstroDateTime.fromJ2000(phaseJD);
+        final phaseDate = AstroDateTime.fromBJJ2000(phaseJD);
 
         // 只有时刻落在目标日期内才返回
         if (phaseDate.year == targetDate.year &&

@@ -115,6 +115,9 @@ SolarTimeResult calcTrueSolarTime(
   final it = SPAIntermediate(); // 用于获取赤纬数据以判断极昼极夜
   final params = SPAParams(
     time: spaTime,
+    // SPA 的 DateTime 主要承载年月日时分；秒单独传入，避免
+    // AstroDateTime 的 fractionalSecond 在进入 SPA 时被截断。
+    second: dateTime.preciseSecond,
     timeZone: timezone,
     longitude: location.longitude,
     latitude: location.latitude,

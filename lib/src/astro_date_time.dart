@@ -1,10 +1,12 @@
+import 'dart:math' as math;
+
 /// 支持公元前的天文日期时间类。
 ///
 /// [year] 采用天文纪年（Astronomical Year Numbering）：
 ///   1 = 公元1年, 0 = 公元前1年, -1 = 公元前2年, ...
 ///
 /// 构造函数签名与 Dart [DateTime] 保持一致，方便迁移：
-///   `AstroDateTime(year, [month, day, hour, minute, second])`
+///   `AstroDateTime(year, [month, day, hour, minute, second, fractionalSecond])`
 ///
 /// 内部通过儒略日（Julian Day）进行日期运算，
 /// 所有天文/历法计算均基于 J2000.0 相对儒略日。
@@ -27,6 +29,19 @@ class AstroDateTime implements Comparable<AstroDateTime> {
   /// 秒 (0-59)
   final int second;
 
+  /// 秒的小数部分，范围为 `[0, 1)`。
+  ///
+  /// 例如 `second = 28, fractionalSecond = 0.125` 表示 `28.125` 秒。
+  /// 旧代码只传整数秒时，该字段默认为 `0.0`，行为保持不变。
+  final double fractionalSecond;
+
+  /// 民用时间的时区偏移（单位：小时）。
+  ///
+  /// `null` 表示旧版的时区中立语义；它不会改变 JD 数值换算。
+  /// 该字段主要用于标注 `fromBJJ2000()`、`fromStdJ2000()` 等入口生成的
+  /// 日期表示属于哪个时区。
+  final double? timeZone;
+
   /// 构造函数，参数顺序与 [DateTime] 一致。
   const AstroDateTime(
     this.year, [
@@ -35,7 +50,44 @@ class AstroDateTime implements Comparable<AstroDateTime> {
     this.hour = 0,
     this.minute = 0,
     this.second = 0,
-  ]);
+    this.fractionalSecond = 0.0,
+  ]) : timeZone = null,
+       assert(
+         fractionalSecond >= 0 && fractionalSecond < 1,
+         'fractionalSecond must be in [0, 1)',
+       );
+
+  const AstroDateTime._internal(
+    this.year,
+    this.month,
+    this.day,
+    this.hour,
+    this.minute,
+    this.second,
+    this.fractionalSecond,
+    this.timeZone,
+  ) : assert(
+        fractionalSecond >= 0 && fractionalSecond < 1,
+        'fractionalSecond must be in [0, 1)',
+      );
+
+  /// 完整秒数（整数秒加小数秒）。
+  double get preciseSecond => second + fractionalSecond;
+
+  /// 时区别名，便于与 [TimePack] 和 SPA 参数命名保持一致。
+  double? get timezone => timeZone;
+
+  /// 返回带有指定时区标记的同一日期字段。
+  AstroDateTime withTimeZone(double? zone) => AstroDateTime._internal(
+    year,
+    month,
+    day,
+    hour,
+    minute,
+    second,
+    fractionalSecond,
+    zone,
+  );
 
   // --------------- 与 DateTime 兼容的属性 ---------------
 
@@ -70,11 +122,18 @@ class AstroDateTime implements Comparable<AstroDateTime> {
   /// * **格里历 (Gregorian)**：1582-10-15 及之后。
   /// * **儒略历 (Julian)**：1582-10-15 之前。
   ///
-  /// **注意：**
-  /// 本方法仅执行数学转换，不包含时区或 ΔT 修正。
-  /// 若当前对象表示的是北京时间，则返回的也是北京时间标尺下的 JD。
+  /// **注意：** 本方法仅执行数学转换，不包含时区或 ΔT 修正。
+  /// `timeZone` 只是日期表示的可空元数据，不会改变这里的旧行为。
   double toJulianDay() {
-    return _gregorianToJD(year, month, day, hour, minute, second);
+    return _gregorianToJD(year, month, day, hour, minute, preciseSecond);
+  }
+
+  /// 将当前日期表示转换为标准 UTC+0 的绝对儒略日。
+  ///
+  /// 与 [toJulianDay] 不同，这里会使用 [timeZone] 将民用时间换回
+  /// UTC+0；时区为 `null` 时按 0 小时处理。
+  double toStdJulianDay() {
+    return toJulianDay() - (timeZone ?? 0.0) / 24.0;
   }
 
   /// ### 转为 J2000.0 相对天数
@@ -86,8 +145,14 @@ class AstroDateTime implements Comparable<AstroDateTime> {
   ///
   /// **换算关系：**
   /// `j2kDays = absoluteJD - 2451545.0`
+  ///
   double toJ2000() {
     return toJulianDay() - j2000;
+  }
+
+  /// 将当前日期表示转换为标准 UTC+0 的 J2000 相对日数。
+  double toStdJ2000() {
+    return toStdJulianDay() - j2000;
   }
 
   /// 从绝对儒略日 (JD) 构造历法时间。
@@ -99,6 +164,9 @@ class AstroDateTime implements Comparable<AstroDateTime> {
   ///   * `year == 0`：公元前 1 年 (1 BC)。
   ///   * `year < 0`：公元前 |year| + 1 年（例: -1 = 2 BC）。
   /// * **UI 注意事项**：展示古代年份时，前端需自行处理 `year <= 0` 的平移逻辑。
+  ///
+  /// JD 的日内小数会写入 [fractionalSecond]，不会被截断为整秒。
+  /// 该入口保持时区中立，因此返回对象的 [timeZone] 为 `null`。
   factory AstroDateTime.fromJulianDay(double jd) {
     return _jdToGregorian(jd);
   }
@@ -109,8 +177,40 @@ class AstroDateTime implements Comparable<AstroDateTime> {
   /// * **历元基准**：J2000.0 对应绝对儒略日 `2451545.0` (2000-01-01 12:00:00)。
   /// * **单位限制**：入参 [j2k] 必须是**天数 (Days)**。
   /// * **避坑指南**：此接口仅接收天数，切勿传入星历公式中常用的儒略世纪数 (T)。
+  ///
+  /// 输入天数的小数部分会写入 [fractionalSecond]，不会被截断为整秒。
+  /// 该入口保持旧的时区中立行为，因此返回对象的 [timeZone] 为 `null`。
   factory AstroDateTime.fromJ2000(double j2k) {
     return _jdToGregorian(j2k + j2000);
+  }
+
+  /// 从寿星万年历约定的“北京时间 J2000 日数”构造日期。
+  ///
+  /// 寿星的定朔、定气等接口返回的数值已经包含北京时间的 `+8/24`
+  /// 约定，因此这里不能再额外加 8 小时。该入口只是为这个常见语义
+  /// 提供明确名称，并在结果上标记 `timeZone: 8`。
+  factory AstroDateTime.fromBJJ2000(double bjJ2000) {
+    return AstroDateTime.fromBJJulianDay(bjJ2000 + j2000);
+  }
+
+  /// 从寿星万年历约定的“北京时间绝对儒略日”构造日期。
+  ///
+  /// 输入数值已经按北京时间字段编码，不会再额外加 8 小时；返回对象
+  /// 会标记 `timeZone: 8`。
+  factory AstroDateTime.fromBJJulianDay(double bjJulianDay) {
+    return AstroDateTime.fromJulianDay(bjJulianDay).withTimeZone(8.0);
+  }
+
+  /// 从标准时区（默认 UTC+0）的 J2000 日数构造日期。
+  ///
+  /// 先按 [fromJ2000] 的原始行为反解，再把显示字段整体加上 [timeZone]
+  /// 小时，并在结果上保留该时区标记。该入口适合将标准 UTC JD 显示为
+  /// 北京时间等民用时间。
+  factory AstroDateTime.fromStdJ2000(double j2k, {double timeZone = 0.0}) {
+    final result = AstroDateTime.fromJ2000(
+      j2k,
+    ).add(Duration(microseconds: (timeZone * 3600 * 1000000).round()));
+    return result.withTimeZone(timeZone);
   }
 
   // --------------- 与 Dart DateTime 互转 ---------------
@@ -124,6 +224,7 @@ class AstroDateTime implements Comparable<AstroDateTime> {
       dt.hour,
       dt.minute,
       dt.second,
+      (dt.millisecond * 1000 + dt.microsecond) / 1000000.0,
     );
   }
 
@@ -133,7 +234,24 @@ class AstroDateTime implements Comparable<AstroDateTime> {
   /// 因为 Dart 的 [DateTime] 不支持公元前。
   DateTime? toDateTime() {
     if (isBCE) return null;
-    return DateTime(year, month, day, hour, minute, second);
+    // DateTime 也以微秒为最小单位；四舍五入时处理恰好进位到下一秒的情况。
+    var microsecond = (fractionalSecond * Duration.microsecondsPerSecond)
+        .round();
+    var secondValue = second;
+    if (microsecond >= Duration.microsecondsPerSecond) {
+      microsecond = 0;
+      secondValue += 1;
+    }
+    return DateTime(
+      year,
+      month,
+      day,
+      hour,
+      minute,
+      secondValue,
+      microsecond ~/ Duration.microsecondsPerMillisecond,
+      microsecond % Duration.microsecondsPerMillisecond,
+    );
   }
 
   // --------------- 运算 ---------------
@@ -143,19 +261,22 @@ class AstroDateTime implements Comparable<AstroDateTime> {
   /// 与 [DateTime.add] 行为一致。
   /// 内部通过儒略日运算，天然支持跨公元前后。
   AstroDateTime add(Duration duration) {
-    final jd = toJulianDay() + duration.inSeconds / 86400.0;
-    return AstroDateTime.fromJulianDay(jd);
+    final jd =
+        toJulianDay() + duration.inMicroseconds / Duration.microsecondsPerDay;
+    return AstroDateTime.fromJulianDay(jd).withTimeZone(timeZone);
   }
 
   /// 减去一段时间，返回新的 [AstroDateTime]。
   AstroDateTime subtract(Duration duration) {
-    return add(Duration(seconds: -duration.inSeconds));
+    return add(Duration(microseconds: -duration.inMicroseconds));
   }
 
   /// 两个日期之间的时间差。
   Duration difference(AstroDateTime other) {
     final diffDays = toJulianDay() - other.toJulianDay();
-    return Duration(seconds: (diffDays * 86400).round());
+    return Duration(
+      microseconds: (diffDays * Duration.microsecondsPerDay).round(),
+    );
   }
 
   /// 是否在 [other] 之后。
@@ -180,26 +301,50 @@ class AstroDateTime implements Comparable<AstroDateTime> {
         other.day == day &&
         other.hour == hour &&
         other.minute == minute &&
-        other.second == second;
+        other.second == second &&
+        other.fractionalSecond == fractionalSecond;
   }
 
   @override
-  int get hashCode => Object.hash(year, month, day, hour, minute, second);
+  int get hashCode =>
+      Object.hash(year, month, day, hour, minute, second, fractionalSecond);
 
   @override
   String toString() {
     final y = isBCE ? '公元前${1 - year}' : '$year';
     final m = month.toString().padLeft(2, '0');
     final d = day.toString().padLeft(2, '0');
-    return '$y-$m-$d ${toTimeString()}';
+    final time = fractionalSecond == 0
+        ? toTimeString()
+        : toTimeString(fractionDigits: 6);
+    return '$y-$m-$d $time';
   }
 
   /// 获取时间部分的字符串 (HH:mm:ss)
-  String toTimeString() {
+  ///
+  /// [fractionDigits] 大于 0 时追加秒的小数部分；默认值为 0，
+  /// 以保持旧代码的输出格式。
+  String toTimeString({int fractionDigits = 0}) {
+    if (fractionDigits < 0 || fractionDigits > 15) {
+      throw ArgumentError.value(
+        fractionDigits,
+        'fractionDigits',
+        'must be between 0 and 15',
+      );
+    }
     final h = hour.toString().padLeft(2, '0');
     final mi = minute.toString().padLeft(2, '0');
     final s = second.toString().padLeft(2, '0');
-    return '$h:$mi:$s';
+    final base = '$h:$mi:$s';
+    if (fractionDigits == 0 || fractionalSecond == 0) return base;
+
+    final scale = math.pow(10, fractionDigits).toInt();
+    var fraction = (fractionalSecond * scale).round();
+    // 防止显示舍入把 [0, 1) 舍入为 1.000...。
+    if (fraction >= scale) fraction = scale - 1;
+    final fractionText = fraction.toString().padLeft(fractionDigits, '0');
+    final trimmed = fractionText.replaceFirst(RegExp(r'0+$'), '');
+    return trimmed.isEmpty ? base : '$base.$trimmed';
   }
 
   // --------------- 内部：JD 转换算法 (Meeus) ---------------
@@ -208,7 +353,7 @@ class AstroDateTime implements Comparable<AstroDateTime> {
   ///
   /// 基于 Jean Meeus《Astronomical Algorithms》标准算法。
   /// 正确处理 Julian/Gregorian 历法切换（1582-10-15）。
-  static double _gregorianToJD(int y, int m, int d, int h, int mi, int s) {
+  static double _gregorianToJD(int y, int m, int d, int h, int mi, double s) {
     final dayFraction = d + h / 24.0 + mi / 1440.0 + s / 86400.0;
 
     int year = y;
@@ -239,19 +384,26 @@ class AstroDateTime implements Comparable<AstroDateTime> {
   ///
   /// 基于 Meeus 逆算法。
   static AstroDateTime _jdToGregorian(double jd) {
-    final jdRounded = (jd * 86400).round() / 86400.0;
-    var jdShifted = jdRounded + 0.5;
+    // 不再先舍入到整秒，否则会丢失 fractionalSecond。JD 的浮点精度
+    // 本身约为几十微秒，已经足够覆盖 Dart DateTime 的微秒接口。
+    final jdShifted = jd + 0.5;
     var z = jdShifted.floor();
     var f = jdShifted - z;
-    var totalSeconds = (f * 86400).round();
-    if (totalSeconds >= 86400) {
-      totalSeconds -= 86400;
-      z += 1;
-    } else if (totalSeconds < 0) {
-      totalSeconds += 86400;
+    if (f < 0) {
+      f += 1;
       z -= 1;
+    } else if (f >= 1) {
+      f -= 1;
+      z += 1;
     }
-    f = totalSeconds / 86400.0;
+    var secondsOfDay = f * 86400.0;
+    // 极少数情况下浮点乘法会把小于一天的 f 舍入为 86400，
+    // 此时进位到下一天后再进行日历字段计算。
+    if (secondsOfDay >= 86400.0) {
+      secondsOfDay = 0.0;
+      f = 0.0;
+      z += 1;
+    }
 
     int a;
     if (z < 2299161) {
@@ -268,16 +420,26 @@ class AstroDateTime implements Comparable<AstroDateTime> {
     final d = (365.25 * c).floor();
     final e = ((b - d) / 30.6001).floor();
 
-    final dayFraction = b - d - (30.6001 * e).floor() + f;
-    final day = dayFraction.floor();
+    final day = b - d - (30.6001 * e).floor();
 
     final month = e < 14 ? e - 1 : e - 13;
     final year = month > 2 ? c - 4716 : c - 4715;
 
-    final hour = totalSeconds ~/ 3600;
-    final minute = (totalSeconds % 3600) ~/ 60;
-    final second = totalSeconds % 60;
+    final hour = (secondsOfDay / 3600.0).floor();
+    final minute = ((secondsOfDay - hour * 3600.0) / 60.0).floor();
+    final secondValue = secondsOfDay - hour * 3600.0 - minute * 60.0;
+    final second = secondValue.floor();
+    var fractionalSecond = secondValue - second;
+    if (fractionalSecond < 1e-12) fractionalSecond = 0.0;
 
-    return AstroDateTime(year, month, day, hour, minute, second);
+    return AstroDateTime(
+      year,
+      month,
+      day,
+      hour,
+      minute,
+      second,
+      fractionalSecond,
+    );
   }
 }

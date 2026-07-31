@@ -255,7 +255,7 @@ List<DayInfo> getDayRange(
       // ZQ contains 25 items from Winter Solstice of previous year to Winter Solstice of this year.
       for (int k = 0; k < res.zq.length; k++) {
         final jqJD = res.zq[k];
-        final dt = AstroDateTime.fromJ2000(jqJD);
+        final dt = AstroDateTime.fromBJJ2000(jqJD);
         final key = "${dt.year}-${_pad(dt.month)}-${_pad(dt.day)}";
 
         // ZQ[0] = 冬至, ZQ[1] = 小寒
