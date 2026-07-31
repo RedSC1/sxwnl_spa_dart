@@ -31,6 +31,18 @@ void main() {
     expect(dtT(0), greaterThan(0));
     expect(preceP03(0, 4), closeTo(84381.406 / rad, 1e-15));
     expect(sALonT2(0), isA<double>());
+    expect(ptyZty(0), closeTo(-0.0022784199179502218, 1e-12));
+    expect(ptyZty2(0), closeTo(-0.0022845033527827113, 1e-12));
+    expect(pty_zty(0), closeTo(ptyZty(0), 1e-15));
+    expect(pty_zty2(0), closeTo(ptyZty2(0), 1e-15));
+
+    final lowLevelPlanet = xingLiu0(Planet.mars, 0.24, 8, 0);
+    expect(lowLevelPlanet, hasLength(3));
+    expect(lowLevelPlanet.every((value) => value.isFinite), isTrue);
+    final lunarPlanet = xingMP(Planet.mars, 0.24, 8, .4091, [0, 0, 0, 0]);
+    expect(lunarPlanet, hasLength(4));
+    final solarPlanet = xingSP(Planet.mars, 0.24, 8, 0, 0, 0);
+    expect(solarPlanet, hasLength(4));
   });
 }
 

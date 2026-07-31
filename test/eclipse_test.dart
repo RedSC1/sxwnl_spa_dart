@@ -90,6 +90,29 @@ void main() {
       expect(result.L4.first, closeTo(2.059878677641059, 1e-7));
     });
 
+    test('rsGS.jieX2 generates closed global eclipse curves', () {
+      rsGS.init(9719.5, 7);
+      final result = rsGS.jieX2(rsGS.Zjd);
+
+      expect(result.p1, hasLength(402));
+      expect(result.p2, hasLength(402));
+      expect(result.p3, hasLength(402));
+      expect(result.p1.first, closeTo(-.4379944723748892, 1e-10));
+      expect(result.p1[1], closeTo(1.2127349644483645, 1e-10));
+      expect(result.p2.first, closeTo(.3800612297656656, 1e-10));
+      expect(result.p3.first, closeTo(.12163932594757654, 1e-10));
+      expect(result.p1.sublist(result.p1.length - 2), result.p1.sublist(0, 2));
+    });
+
+    test('rsGS.jieX3 exposes the original minute boundary table', () {
+      rsGS.init(9719.5, 7);
+      final result = rsGS.jieX3(9719.5);
+
+      expect(result, startsWith('<pre>时间(力学时)'));
+      expect(result, contains('半影北界限'));
+      expect(result, contains('<br>'));
+    });
+
     test('rsGS unwraps sidereal time across 2π before interpolation', () {
       // 2006-03-29 total eclipse: the 7-point GST samples cross 2π.
       // This guards the original eph.js longitude continuity behavior.
@@ -140,6 +163,26 @@ void main() {
       // sT is TT, but the source-compatible sun_s/sun_j fields are UT.
       expect(rsPL.sun_s, closeTo(9719.714850370961, 1e-7));
       expect(rsPL.sun_j, closeTo(9720.412456485145, 1e-7));
+    });
+
+    test('rsPL.nbj returns local eclipse center and north/south limits', () {
+      // Use the exact interpolated new-moon time, as required by sxwnl nbj().
+      rsPL.nbj(9720.234924486316);
+
+      expect(rsPL.Vc, '全');
+      expect(rsPL.Vb, '306千米');
+      // Dart VM 与 V8 对超大恒星时参数的三角函数归约略有差异；弧秒级
+      // 误差不影响寿星算法的南北界结果，因此采用 1e-6 弧度容差。
+      expect(rsPL.V[0], closeTo(-.4699499723015208, 1e-6));
+      expect(rsPL.V[1], closeTo(1.2178444085422377, 1e-6));
+      expect(rsPL.V[2], closeTo(-.4036615258760605, 1e-6));
+      expect(rsPL.V[3], closeTo(1.2269258388314244, 1e-6));
+      expect(rsPL.V[4], closeTo(-.5310773707920191, 1e-6));
+      expect(rsPL.V[5], closeTo(1.2079363730922204, 1e-6));
+      expect(rsPL.V[6], 100);
+      expect(rsPL.V[7], 100);
+      expect(rsPL.V[8], closeTo(-1.4797593154342437, 1e-6));
+      expect(rsPL.V[9], closeTo(.6965150586603215, 1e-6));
     });
 
     test('rsPL uses the original NASA lunar-radius ratio', () {

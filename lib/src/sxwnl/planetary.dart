@@ -338,6 +338,13 @@ List<double> _xingLiu0(Planet planet, double t, int n, double lightTime) {
   return llrConv(body, e);
 }
 
+/// 行星视黄道坐标的底层计算。
+///
+/// 原函数名：`xingLiu0(xt,t,n,gxs)`。这是 [xingLiu] 使用的公开低层接口，
+/// [lightTime] 为光行差回溯的儒略世纪数。
+List<double> xingLiu0(Planet planet, double t, int n, double lightTime) =>
+    _xingLiu0(planet, t, n, lightTime);
+
 /// 行星顺留或逆留时刻。
 ///
 /// [direct] 为 true 求顺留，为 false 求逆留。原函数名：`xingLiu(xt,t,sn)`。
@@ -394,6 +401,13 @@ List<double> _xingMP(Planet planet, double t, int n, double e, List<double> g) {
   ];
 }
 
+/// 月亮与行星的视赤经/赤纬差底层计算。
+///
+/// 原函数名：`xingMP(xt,t,n,E,g)`。其中 [g] 为 `[月光行差、行星光行差、
+/// 章动经度、章动交角]`，单位均按寿星原版使用儒略世纪或弧度。
+List<double> xingMP(Planet planet, double t, int n, double e, List<double> g) =>
+    _xingMP(planet, t, n, e, g);
+
 /// 行星合月（视赤经相等）的时刻与赤纬差 `[t, Δdec]`。
 ///
 /// 原函数名：`xingHY(xt,t)`。
@@ -444,6 +458,19 @@ List<double> _xingSP(
     body[2] * csAgx,
   ];
 }
+
+/// 行星与太阳的视黄经差底层计算。
+///
+/// 原函数名：`xingSP(xt,t,n,w0,ts,tp)`，返回 `[黄经差、黄纬差、太阳光
+/// 行差时间、行星光行差时间]`。
+List<double> xingSP(
+  Planet planet,
+  double t,
+  int n,
+  double w0,
+  double ts,
+  double tp,
+) => _xingSP(planet, t, n, w0, ts, tp);
 
 /// 行星合/冲（内行星为上、下合）时刻与黄纬差 `[t, Δlat]`。
 /// [oppositionOrInferior] 为 true 求冲或下合。原函数名：`xingHR(xt,t,f)`。

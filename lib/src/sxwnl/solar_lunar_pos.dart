@@ -411,6 +411,32 @@ List<double> earthMinR(double t, bool perihelion) {
 
 // ==================== 反求时间（牛顿迭代） ====================
 
+/// 已知地球真黄经反求时间。
+///
+/// 原函数名：`XL.E_Lon_t(W)`。返回 J2000.0 起算的儒略世纪数。
+double eLonT(double w) {
+  var v = 628.3319653318;
+  var t = (w - 1.75347) / v;
+  v = eV(t);
+  t += (w - eLon(t, 10)) / v;
+  v = eV(t);
+  t += (w - eLon(t, -1)) / v;
+  return t;
+}
+
+/// 已知真月球黄经反求时间。
+///
+/// 原函数名：`XL.M_Lon_t(W)`。返回 J2000.0 起算的儒略世纪数。
+double mLonT(double w) {
+  var v = 8399.70911033384;
+  var t = (w - 3.81034) / v;
+  t += (w - mLon(t, 3)) / v;
+  v = mV(t);
+  t += (w - mLon(t, 20)) / v;
+  t += (w - mLon(t, -1)) / v;
+  return t;
+}
+
 /// 已知太阳视黄经反求时间（高精度）。
 ///
 /// [w] 目标太阳视黄经（弧度）。
@@ -466,6 +492,30 @@ double msALonT(double w) {
   return t;
 }
 
+/// 已知月日视黄经差反求时间（高速低精度，误差约不超过 40 秒）。
+///
+/// 原函数名：`XL.MS_aLon_t1(W)`。返回 J2000.0 起算的儒略世纪数。
+double msALonT1(double w) {
+  var v = 7771.37714500204;
+  var t = (w + 1.08472) / v;
+  t += (w - msALon(t, 3, 3)) / v;
+  v = mV(t) - eV(t);
+  t += (w - msALon(t, 50, 20)) / v;
+  return t;
+}
+
+/// 已知太阳视黄经反求时间（高速低精度，最大误差约不超过 50 秒）。
+///
+/// 原函数名：`XL.S_aLon_t1(W)`。返回 J2000.0 起算的儒略世纪数。
+double sALonT1(double w) {
+  var v = 628.3319653318;
+  var t = (w - 1.75347 - math.pi) / v;
+  v = 628.332 + 21 * math.sin(1.527 + 628.307585 * t);
+  t += (w - sALon(t, 3)) / v;
+  t += (w - sALon(t, 40)) / v;
+  return t;
+}
+
 /// 已知月日视黄经差反求时间（低精度，误差不超过600秒）。
 ///
 /// [w] 目标月日视黄经差（弧度）。
@@ -499,3 +549,59 @@ double msALonT2(double w) {
   t += (w - l) / v;
   return t;
 }
+
+/// 高精度均时差（太阳视黄经与视赤经的差）。
+///
+/// 原函数名：`pty_zty(t)`。返回以“周”为单位的时间差：乘以 1 天即为
+/// 均时差日数，乘以 24 小时即为小时。这里保留寿星原版的章动、黄纬及
+/// 真黄赤交角修正，适合需要与 sxwnl 数值对齐的调用。
+double ptyZty(double t) {
+  final t2 = t * t;
+  final t3 = t2 * t;
+  final t4 = t3 * t;
+  final t5 = t4 * t;
+  var longitude =
+      (1753470142 +
+              628331965331.8 * t +
+              5296.74 * t2 +
+              0.432 * t3 -
+              0.1124 * t4 -
+              0.00009 * t5) /
+          1000000000 +
+      math.pi -
+      20.5 / rad;
+
+  final dL = -17.2 * math.sin(2.1824 - 33.75705 * t) / rad;
+  final dE = 9.2 * math.cos(2.1824 - 33.75705 * t) / rad;
+  final e = hcjj(t) + dE;
+  final sun = <double>[
+    eLon(t, 50) + math.pi + gxcSunLon(t) + dL,
+    -(2796 * math.cos(3.1987 + 8433.46616 * t) +
+            1016 * math.cos(5.4225 + 550.75532 * t) +
+            804 * math.cos(3.88 + 522.3694 * t)) /
+        1000000000,
+  ];
+  final equatorial = llrConv(sun, e);
+  equatorial[0] -= dL * math.cos(e);
+  longitude = rad2rrad(longitude - equatorial[0]);
+  return longitude / pi2;
+}
+
+/// 低精度均时差（误差约 1 秒）。
+///
+/// 原函数名：`pty_zty2(t)`，返回单位同 [ptyZty]。
+double ptyZty2(double t) {
+  var longitude =
+      (1753470142 + 628331965331.8 * t + 5296.74 * t * t) / 1000000000 +
+      math.pi;
+  final e = (84381.4088 - 46.836051 * t) / rad;
+  final sun = llrConv([eLon(t, 5) + math.pi, 0, 0], e);
+  longitude = rad2rrad(longitude - sun[0]);
+  return longitude / pi2;
+}
+
+/// 原始下划线命名的兼容别名。
+double pty_zty(double t) => ptyZty(t);
+
+/// 原始下划线命名的兼容别名。
+double pty_zty2(double t) => ptyZty2(t);
