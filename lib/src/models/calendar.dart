@@ -8,6 +8,7 @@ import '../jie_qi.dart';
 import '../sxwnl/ssq.dart';
 import 'gan_zhi.dart';
 import 'lunar_date.dart';
+import 'hui_li_date.dart';
 import '../location.dart';
 import '../sxwnl/true_solar_time.dart';
 import '../sxwnl/astro_events.dart';
@@ -17,6 +18,9 @@ import '../sxwnl/festivals.dart';
 class DayInfo {
   final AstroDateTime solarDate;
   final LunarDate lunarDate;
+
+  /// 寿星原版 `ob.Hyear/Hmonth/Hday` 对应的算术回历日期。
+  final HuiLiDate huiLiDate;
   final int lunarMonthSize;
   final GanZhi ganZhi;
   final int weekday;
@@ -35,6 +39,7 @@ class DayInfo {
   DayInfo({
     required this.solarDate,
     required this.lunarDate,
+    HuiLiDate? huiLiDate,
     required this.lunarMonthSize,
     required this.ganZhi,
     required this.weekday,
@@ -47,12 +52,16 @@ class DayInfo {
     this.moonPhaseTime,
     this.sunrise,
     this.sunset,
-  });
+  }) : huiLiDate = huiLiDate ?? HuiLiDate.fromSolar(solarDate);
+
+  /// English spelling alias for [huiLiDate].
+  HijriDate get hijriDate => huiLiDate;
 
   /// 拷贝并替换部分字段 (用于扩展功能打补丁)
   DayInfo copyWith({
     AstroDateTime? solarDate,
     LunarDate? lunarDate,
+    HuiLiDate? huiLiDate,
     int? lunarMonthSize,
     GanZhi? ganZhi,
     int? weekday,
@@ -69,6 +78,7 @@ class DayInfo {
     return DayInfo(
       solarDate: solarDate ?? this.solarDate,
       lunarDate: lunarDate ?? this.lunarDate,
+      huiLiDate: huiLiDate ?? this.huiLiDate,
       lunarMonthSize: lunarMonthSize ?? this.lunarMonthSize,
       ganZhi: ganZhi ?? this.ganZhi,
       weekday: weekday ?? this.weekday,
@@ -109,10 +119,10 @@ class DayInfo {
   @override
   String toString() {
     final solarDateStr = solarDate.toString().split(' ')[0];
-    String s =
-        '$solarDateStr ';
+    String s = '$solarDateStr ';
     s += '$ganZhi 周$weekdayName $constellation ';
     s += '农历$lunarDate(${lunarMonthSize == 30 ? "大" : "小"})';
+    s += ' 回历${huiLiDate.year}-${huiLiDate.month}-${huiLiDate.day}';
 
     // toString 默认显示主要级别节日
     final displayFtv = getFestivalsByLevel();

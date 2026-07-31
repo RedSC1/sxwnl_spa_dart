@@ -5,6 +5,7 @@ export 'location.dart';
 export 'models/gan_zhi.dart';
 export 'models/calendar.dart';
 export 'models/lunar_date.dart';
+export 'models/hui_li_date.dart';
 export 'models/timepack.dart';
 export 'sxwnl/gan_zhi_calc.dart';
 export 'sxwnl/delta_t.dart';
